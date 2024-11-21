@@ -80,6 +80,7 @@ int sprd_clk_regmap_init(struct platform_device *pdev,
 	}
 
 	sprd_clk_set_regmap(desc, regmap);
+	platform_set_drvdata(pdev, regmap);
 
 	data->gate_clk = devm_clk_get_optional_enabled(&pdev->dev, "enable");
 	if (IS_ERR(data->gate_clk))
