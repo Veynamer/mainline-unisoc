@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/clock/sprd,ums9230-clk.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: UMS9230 SoC clock controller
+
+maintainers:
+  - Otto Pflüger <otto.pflueger@abscue.de>
+
+properties:
+  compatible:
+    enum:
+      - sprd,ums9230-aon-gate
+      - sprd,ums9230-aonapb-clk
+      - sprd,ums9230-ap-clk
+      - sprd,ums9230-apahb-gate
+      - sprd,ums9230-apapb-gate
+      - sprd,ums9230-audcpahb-gate
+      - sprd,ums9230-audcpapb-gate
+      - sprd,ums9230-g0-pll
+      - sprd,ums9230-g1-pll
+      - sprd,ums9230-g3-pll
+      - sprd,ums9230-gc-pll
+      - sprd,ums9230-gpu-clk
+      - sprd,ums9230-mm-clk
+      - sprd,ums9230-mm-gate-clk
+      - sprd,ums9230-pmu-gate
+
+  "#clock-cells":
+    const: 1
+
+  power-domains:
+    maxItems: 1
+
+  reg:
+    maxItems: 1
+
+  "#reset-cells":
+    const: 1
+
+allOf:
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: sprd,ums9230-aonapb-clk
+    then:
+      properties:
+        clocks:
+          minItems: 3
+          maxItems: 3
+        clock-names:
+          items:
+            - const: ext-26m
+            - const: ext-32k
+            - const: rco-100m
+      required:
+        - clocks
+        - clock-names
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: sprd,ums9230-ap-clk
+    then:
+      properties:
+        clocks:
+          minItems: 3
+          maxItems: 3
+        clock-names:
+          items:
+            - const: ext-26m
+            - const: dphy-250m
+            - const: dphy-333m3
+      required:
+        - clocks
+        - clock-names
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: sprd,ums9230-mm-clk
+    then:
+      properties:
+        clocks:
+          minItems: 2
+          maxItems: 2
+        clock-names:
+          items:
+            - const: ext-26m
+            - const: enable
+      required:
+        - clocks
+        - clock-names
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            enum:
+              - sprd,ums9230-aon-gate
+              - sprd,ums9230-apahb-gate
+              - sprd,ums9230-apapb-gate
+              - sprd,ums9230-audcpahb-gate
+              - sprd,ums9230-g1-pll
+              - sprd,ums9230-g3-pll
+              - sprd,ums9230-gc-pll
+              - sprd,ums9230-gpu-clk
+              - sprd,ums9230-pmu-gate
+    then:
+      properties:
+        clocks:
+          minItems: 1
+          maxItems: 1
+        clock-names:
+          items:
+            - const: ext-26m
+      required:
+        - clocks
+        - clock-names
+
+required:
+  - compatible
+  - '#clock-cells'
+  - reg
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    ap_clk: clock-controller@20010000 {
+      compatible = "sprd,ums9230-ap-clk";
+      reg = <0x20010000 0x1000>;
+      clocks = <&ext_26m>, <&dphy_250m>, <&dphy_333m3>;
+      clock-names = "ext-26m", "dphy-250m", "dphy-333m3";
+      #clock-cells = <1>;
+    };
+...
