@@ -210,6 +210,19 @@ config TOUCHSCREEN_CHIPONE_ICN8505
 	  To compile this driver as a module, choose M here: the
 	  module will be called chipone_icn8505.
 
+config TOUCHSCREEN_CHIPONE_ICNL9916
+	tristate "chipone icnl9916 touchscreen controller"
+	depends on GPIOLIB || COMPILE_TEST
+	depends on I2C
+	depends on OF
+	help
+	  Say Y here if you have a ChipOne icnl9916 based I2C touchscreen.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called chipone_icnl9916.
+
 config TOUCHSCREEN_CY8CTMA140
 	tristate "cy8ctma140 touchscreen"
 	depends on I2C
