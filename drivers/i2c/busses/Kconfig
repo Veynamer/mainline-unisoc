@@ -1159,6 +1159,15 @@ config I2C_SPRD
 	  If you say yes to this option, support will be included for the
 	  Spreadtrum I2C interface.
 
+config I2C_SPRD_HW_V2
+	tristate "Spreadtrum I2C hardware channel V2 interface"
+	depends on I2C=y && (ARCH_SPRD || COMPILE_TEST)
+	depends on COMMON_CLK
+	help
+	  If you say yes to this option, support will be included for the
+	  Spreadtrum I2C interface IP version r10p0 or later in hardware
+	  channel mode.
+
 config I2C_ST
 	tristate "STMicroelectronics SSC I2C support"
 	depends on ARCH_STI || COMPILE_TEST
