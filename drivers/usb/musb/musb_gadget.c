@@ -281,7 +281,8 @@ static void txstate(struct musb *musb, struct musb_request *req)
 
 		/* MUSB_TXCSR_P_ISO is still set correctly */
 
-		if (musb_dma_inventra(musb) || musb_dma_ux500(musb)) {
+		if (musb_dma_inventra(musb) || musb_dma_ux500(musb) ||
+		    musb_dma_sprd(musb)) {
 			if (request_size < musb_ep->packet_sz)
 				musb_ep->dma->desired_mode = 0;
 			else
@@ -551,6 +552,22 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 	if (csr & MUSB_RXCSR_P_SENDSTALL) {
 		musb_dbg(musb, "%s stalling, RXCSR %04x",
 		    musb_ep->end_point.name, csr);
+		return;
+	}
+
+	if (musb_dma_sprd(musb) && is_buffer_mapped(req)) {
+		struct dma_controller	*c = musb->dma_controller;
+		struct dma_channel	*channel = musb_ep->dma;
+
+		csr |= MUSB_RXCSR_AUTOCLEAR | MUSB_RXCSR_DMAMODE |
+			MUSB_RXCSR_DMAENAB;
+		musb_writew(epio, MUSB_RXCSR, csr);
+
+		c->channel_program(channel,
+				   musb_ep->packet_sz,
+				   0,
+				   request->dma + request->actual,
+				   request->length - request->actual);
 		return;
 	}
 
