@@ -5,9 +5,12 @@
  * Based on mtk-pm-domains.c
  * Copyright (c) 2020 Collabora Ltd.
  */
+
+#include <linux/clk.h>
 #include <linux/init.h>
 #include <linux/mfd/syscon.h>
 #include <linux/of.h>
+#include <linux/of_clk.h>
 #include <linux/platform_device.h>
 #include <linux/pm_domain.h>
 #include <linux/regmap.h>
@@ -18,6 +21,8 @@ struct sprd_pmu_domain {
 	struct generic_pm_domain genpd;
 	const struct sprd_pmu_domain_data *data;
 	struct sprd_pmu *pmu;
+	int num_clks;
+	struct clk_bulk_data *clks;
 };
 
 struct sprd_pmu {
@@ -34,6 +39,11 @@ static int sprd_pmu_power_on(struct generic_pm_domain *genpd)
 {
 	struct sprd_pmu_domain *pd = to_sprd_pmu_domain(genpd);
 	struct sprd_pmu *pmu = pd->pmu;
+	int ret;
+
+	ret = clk_bulk_prepare_enable(pd->num_clks, pd->clks);
+	if (ret)
+		return ret;
 
 	if (SPRD_PD_CAPS(pd, SPRD_PD_SHUTDOWN))
 		regmap_write(pmu->base, pd->data->pd_cfg_offs + 0x2000,
@@ -63,6 +73,8 @@ static int sprd_pmu_power_off(struct generic_pm_domain *genpd)
 
 	msleep(50);
 
+	clk_bulk_disable_unprepare(pd->num_clks, pd->clks);
+
 	return 0;
 }
 
@@ -71,7 +83,8 @@ generic_pm_domain *sprd_pmu_add_one_domain(struct sprd_pmu *pmu, struct device_n
 {
 	const struct sprd_pmu_domain_data *domain_data;
 	struct sprd_pmu_domain *pd;
-	int ret;
+	int i, ret, num_clks;
+	struct clk *clk;
 	u32 id;
 
 	ret = of_property_read_u32(node, "reg", &id);
@@ -105,6 +118,29 @@ generic_pm_domain *sprd_pmu_add_one_domain(struct sprd_pmu *pmu, struct device_n
 		return ERR_PTR(-EINVAL);
 	}
 
+	num_clks = of_clk_get_parent_count(node);
+	if (num_clks > 0) {
+		pd->clks = devm_kcalloc(pmu->dev, num_clks, sizeof(*pd->clks),
+					GFP_KERNEL);
+		if (!pd->clks)
+			return ERR_PTR(-ENOMEM);
+
+		for (i = 0; i < num_clks; i++) {
+			clk = of_clk_get(node, i);
+			if (IS_ERR(clk)) {
+				ret = PTR_ERR(clk);
+				dev_err_probe(pmu->dev, ret,
+					      "%pOF: failed to get clock %d\n",
+					      node, i);
+				goto err_put_clocks;
+			}
+
+			pd->clks[i].clk = clk;
+		}
+
+		pd->num_clks = num_clks;
+	}
+
 	pd->genpd.name = pd->data->name;
 
 	pd->genpd.power_off = sprd_pmu_power_off;
@@ -133,6 +169,10 @@ generic_pm_domain *sprd_pmu_add_one_domain(struct sprd_pmu *pmu, struct device_n
 	pmu->domains[id] = &pd->genpd;
 
 	return pmu->pd_data.domains[id];
+
+err_put_clocks:
+	clk_bulk_put(pd->num_clks, pd->clks);
+	return ERR_PTR(ret);
 }
 
 static void sprd_pmu_remove_one_domain(struct sprd_pmu_domain *pd)

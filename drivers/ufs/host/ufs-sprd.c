@@ -149,10 +149,8 @@ static int ufs_sprd_common_init(struct ufs_hba *hba)
 	host->hba = hba;
 	ufshcd_set_variant(hba, host);
 
-	hba->caps |= UFSHCD_CAP_CLK_GATING |
-		UFSHCD_CAP_CRYPTO |
-		UFSHCD_CAP_WB_EN;
-	hba->quirks |= UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS;
+	hba->caps |= host->priv->caps;
+	hba->quirks |= host->priv->quirks;
 
 	ret = ufs_sprd_parse_dt(dev, hba, host);
 
@@ -386,6 +384,11 @@ static void sprd_ufs_n6_h8_notify(struct ufs_hba *hba,
 }
 
 static struct ufs_sprd_priv n6_ufs = {
+	.caps = UFSHCD_CAP_CLK_GATING |
+		UFSHCD_CAP_CRYPTO |
+		UFSHCD_CAP_WB_EN,
+	.quirks = UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS,
+
 	.rci[SPRD_UFSHCI_SOFT_RST] = { .name = "controller", },
 	.rci[SPRD_UFS_DEV_RST] = { .name = "device", },
 
@@ -405,8 +408,200 @@ static struct ufs_sprd_priv n6_ufs = {
 	},
 };
 
+static void ufs_sprd_l6_host_reset(struct ufs_hba *hba)
+{
+	struct ufs_sprd_priv *priv = ufs_sprd_get_priv_data(hba);
+
+	dev_info(hba->dev, "ufs host reset!\n");
+
+	reset_control_assert(priv->rci[SPRD_UFS_GLB_RST].rc);
+	usleep_range(1000, 1100);
+	reset_control_deassert(priv->rci[SPRD_UFS_GLB_RST].rc);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_AP_AHB, AP_AHB_MPHY_CB_CHANNEL_0,
+			       AP_AHB_CB_RESET | AP_AHB_CB_CFGCLK,
+			       AP_AHB_CB_RESET | AP_AHB_CB_CFGCLK);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_2T2R_APB_REG1,
+			       MPHY_2T2R_APB_RESETN, 0);
+	usleep_range(1000, 1100);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_2T2R_APB_REG1,
+			       MPHY_2T2R_APB_RESETN, MPHY_2T2R_APB_RESETN);
+
+	/* initialize phy */
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG7_LANE0,
+			       MPHY_CDR_MONITOR_BYPASS_MASK,
+			       MPHY_CDR_MONITOR_BYPASS_ENABLE);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG7_LANE1,
+			       MPHY_CDR_MONITOR_BYPASS_MASK,
+			       MPHY_CDR_MONITOR_BYPASS_ENABLE);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG20_LANE0,
+			       MPHY_RXOFFSETCALDONEOVR_MASK,
+			       MPHY_RXOFFSETCALDONEOVR_ENABLE);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG20_LANE0,
+			       MPHY_RXOFFOVRVAL_MASK,
+			       MPHY_RXOFFOVRVAL_ENABLE);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG49_LANE0,
+			       MPHY_RXCFGG1_MASK,
+			       MPHY_RXCFGG1_VAL);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG49_LANE1,
+			       MPHY_RXCFGG1_MASK,
+			       MPHY_RXCFGG1_VAL);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG51_LANE0,
+			       MPHY_RXCFGG3_MASK,
+			       MPHY_RXCFGG3_VAL);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG51_LANE1,
+			       MPHY_RXCFGG3_MASK,
+			       MPHY_RXCFGG3_VAL);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_LANE0_FIFO,
+			       MPHY_FIFO_ENABLE_MASK,
+			       MPHY_FIFO_ENABLE_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_LANE1_FIFO,
+			       MPHY_FIFO_ENABLE_MASK,
+			       MPHY_FIFO_ENABLE_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_TACTIVATE_TIME_LANE0,
+			       MPHY_TACTIVATE_TIME_200US,
+			       MPHY_TACTIVATE_TIME_200US);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG60_LANE0,
+			       MPHY_RX_STEP4_CYCLE_G3_MASK,
+			       MPHY_RX_STEP4_CYCLE_G3_VAL);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG60_LANE1,
+			       MPHY_RX_STEP4_CYCLE_G3_MASK,
+			       MPHY_RX_STEP4_CYCLE_G3_VAL);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_AP_AHB, AP_AHB_MPHY_CB_CHANNEL_0,
+			       AP_AHB_CB_RESET | AP_AHB_CB_CFGCLK | AP_AHB_CB_REFCLKON,
+			       AP_AHB_CB_REFCLKON);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_AP_AHB, AP_AHB_UFS_LP_CTRL_1,
+
+			       AP_AHB_UFS_FORCE_LP_RESET_N |
+			       AP_AHB_UFS_FORCE_LP_ISOL_EN |
+			       AP_AHB_UFS_FORCE_LP_PWR_READY |
+			       AP_AHB_UFS_SEL_LP_ISOL_EN |
+			       AP_AHB_UFS_SEL_LP_RESET_N |
+			       AP_AHB_UFS_SEL_LP_PWR_READY,
+
+			       /* disable ISOL_EN and enable others */
+			       AP_AHB_UFS_FORCE_LP_RESET_N |
+			       AP_AHB_UFS_FORCE_LP_PWR_READY |
+			       AP_AHB_UFS_SEL_LP_ISOL_EN |
+			       AP_AHB_UFS_SEL_LP_RESET_N |
+			       AP_AHB_UFS_SEL_LP_PWR_READY);
+
+
+	reset_control_assert(priv->rci[SPRD_UFSHCI_SOFT_RST].rc);
+	usleep_range(1000, 1100);
+	reset_control_deassert(priv->rci[SPRD_UFSHCI_SOFT_RST].rc);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_AP_AHB, AP_AHB_UFS_CONTROLLER,
+			       AP_AHB_IES_EN,
+			       AP_AHB_IES_EN);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_AP_AHB, AP_AHB_UFS_CLK_CTRL,
+			       AP_AHB_CG_PCLKREQ_SW,
+			       AP_AHB_CG_PCLKREQ_SW);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_ANR_MPHY_CTRL2,
+			       MPHY_ANR_MPHY_CTRL2_REFCLKON_MASK,
+			       MPHY_ANR_MPHY_CTRL2_REFCLKON_VAL);
+	usleep_range(1, 2);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_REG_SEL_CFG_0,
+			       MPHY_REG_SEL_CFG_0_REFCLKON_MASK,
+			       MPHY_REG_SEL_CFG_0_REFCLKON_VAL);
+	usleep_range(1, 2);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG14_LANE0,
+			       MPHY_APB_REFCLK_AUTOH8_EN_MASK,
+			       MPHY_APB_REFCLK_AUTOH8_EN_VAL);
+	usleep_range(1, 2);
+
+	/* FIXME: this should only be done for certaion SoC revisions */
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG18_LANE0,
+			       MPHY_APB_PLLTIMER_MASK,
+			       MPHY_APB_PLLTIMER_VAL);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG19_LANE0,
+			       MPHY_APB_HSTXSCLKINV1_MASK,
+			       MPHY_APB_HSTXSCLKINV1_VAL);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG32_LANE0,
+			       MPHY_APB_RX_CFGRXBIASLSENVAL_MASK,
+			       MPHY_APB_RX_CFGRXBIASLSENVAL_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG32_LANE0,
+			       MPHY_APB_RX_CFGRXBIASLSENOVR_MASK,
+			       MPHY_APB_RX_CFGRXBIASLSENOVR_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG1_LANE0,
+			       MPHY_APB_OVR_REG_LS_LDO_STABLE_MASK,
+			       MPHY_APB_OVR_REG_LS_LDO_STABLE_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG17_LANE0,
+			       MPHY_APB_REG_LS_LDO_STABLE_MASK,
+			       MPHY_APB_REG_LS_LDO_STABLE_MASK);
+
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG32_LANE1,
+			       MPHY_APB_RX_CFGRXBIASLSENVAL_MASK,
+			       MPHY_APB_RX_CFGRXBIASLSENVAL_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG32_LANE1,
+			       MPHY_APB_RX_CFGRXBIASLSENOVR_MASK,
+			       MPHY_APB_RX_CFGRXBIASLSENOVR_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG1_LANE1,
+			       MPHY_APB_OVR_REG_LS_LDO_STABLE_MASK,
+			       MPHY_APB_OVR_REG_LS_LDO_STABLE_MASK);
+	ufs_sprd_regmap_update(priv, SPRD_UFS_ANLG, MPHY_DIG_CFG17_LANE1,
+			       MPHY_APB_REG_LS_LDO_STABLE_MASK,
+			       MPHY_APB_REG_LS_LDO_STABLE_MASK);
+}
+
+static int ufs_sprd_l6_init(struct ufs_hba *hba)
+{
+	int ret = 0;
+
+	ret = ufs_sprd_common_init(hba);
+	if (ret != 0)
+		return ret;
+
+	hba->rpm_lvl = UFS_PM_LVL_1;
+	hba->spm_lvl = UFS_PM_LVL_5;
+
+	return 0;
+}
+
+static int sprd_ufs_l6_hce_enable_notify(struct ufs_hba *hba,
+					 enum ufs_notify_change_status status)
+{
+	if (status == PRE_CHANGE) {
+		ufs_sprd_l6_host_reset(hba);
+	}
+
+	if (status == POST_CHANGE) {
+		ufshcd_writel(hba, UFS_HCLKDIV_DEFAULT_VALUE, UFS_REG_HCLKDIV);
+		ufs_sprd_get_unipro_ver(hba);
+	}
+
+	return 0;
+}
+
+static struct ufs_sprd_priv l6_ufs = {
+	.caps = UFSHCD_CAP_CLK_GATING |
+		UFSHCD_CAP_WB_EN,
+	.quirks = UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS |
+		  UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8,
+
+	.rci[SPRD_UFSHCI_SOFT_RST] = { .name = "controller", },
+	.rci[SPRD_UFS_GLB_RST] = { .name = "global", },
+
+	.sysci[SPRD_UFS_ANLG] = { .name = "sprd,ufs-anlg-syscon", },
+	.sysci[SPRD_UFS_AP_AHB] = { .name = "sprd,ufs-ap-ahb-syscon", },
+
+	.ufs_hba_sprd_vops = {
+		.name = "sprd,ums9230-ufs",
+		.init = ufs_sprd_l6_init,
+		.hce_enable_notify = sprd_ufs_l6_hce_enable_notify,
+		.pwr_change_notify = sprd_ufs_pwr_change_notify,
+		.suspend = ufs_sprd_suspend,
+	},
+};
+
 static const struct of_device_id __maybe_unused ufs_sprd_of_match[] = {
-	{ .compatible = "sprd,ums9620-ufs", .data = &n6_ufs.ufs_hba_sprd_vops},
+	{ .compatible = "sprd,ums9230-ufs", .data = &l6_ufs.ufs_hba_sprd_vops },
+	{ .compatible = "sprd,ums9620-ufs", .data = &n6_ufs.ufs_hba_sprd_vops },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ufs_sprd_of_match);
