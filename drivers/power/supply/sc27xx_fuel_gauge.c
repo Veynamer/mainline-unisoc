@@ -565,7 +565,15 @@ static int sc27xx_fgu_get_status(struct sc27xx_fgu_data *data, int *status)
 {
 	union power_supply_propval val;
 	struct power_supply *psy;
-	int i, ret = -EINVAL;
+	int i, ret;
+
+	ret = power_supply_get_property_from_supplier(data->battery,
+						      POWER_SUPPLY_PROP_STATUS,
+						      &val);
+	if (!ret) {
+		*status = val.intval;
+		return 0;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(sc27xx_charger_supply_name); i++) {
 		psy = power_supply_get_by_name(sc27xx_charger_supply_name[i]);
