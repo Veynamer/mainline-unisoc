@@ -15,8 +15,10 @@
 #include <linux/slab.h>
 
 /* PMIC global control registers definition */
-#define SC27XX_MODULE_EN0		0xc08
-#define SC27XX_CLK_EN0			0xc18
+#define SC2730_MODULE_EN0		0xc08
+#define SC2730_CLK_EN0			0xc18
+#define SC2731_MODULE_EN0		0x1808
+#define SC2731_CLK_EN0			0x1810
 #define SC27XX_FGU_EN			BIT(7)
 #define SC27XX_FGU_RTC_EN		BIT(6)
 
@@ -68,6 +70,11 @@
 /* micro Ohms */
 #define SC27XX_FGU_IDEAL_RESISTANCE	20000
 
+struct sc27xx_fgu_variant_data {
+	u32 module_en;
+	u32 clk_en;
+};
+
 /*
  * struct sc27xx_fgu_data: describe the FGU device
  * @regmap: regmap for register access
@@ -93,6 +100,7 @@
  * @calib_resist: the real resistance of coulomb counter chip in uOhm
  * @cap_table: capacity table with corresponding ocv
  * @resist_table: resistance percent table with corresponding temperature
+ * @pdata: PMIC variant register information
  */
 struct sc27xx_fgu_data {
 	struct regmap *regmap;
@@ -119,6 +127,7 @@ struct sc27xx_fgu_data {
 	int calib_resist;
 	struct power_supply_battery_ocv_table *cap_table;
 	struct power_supply_resistance_temp_table *resist_table;
+	const struct sc27xx_fgu_variant_data *pdata;
 };
 
 static int sc27xx_fgu_cap_to_clbcnt(struct sc27xx_fgu_data *data, int capacity);
@@ -945,8 +954,8 @@ static void sc27xx_fgu_disable(void *_data)
 {
 	struct sc27xx_fgu_data *data = _data;
 
-	regmap_update_bits(data->regmap, SC27XX_CLK_EN0, SC27XX_FGU_RTC_EN, 0);
-	regmap_update_bits(data->regmap, SC27XX_MODULE_EN0, SC27XX_FGU_EN, 0);
+	regmap_update_bits(data->regmap, data->pdata->clk_en, SC27XX_FGU_RTC_EN, 0);
+	regmap_update_bits(data->regmap, data->pdata->module_en, SC27XX_FGU_EN, 0);
 }
 
 static int sc27xx_fgu_cap_to_clbcnt(struct sc27xx_fgu_data *data, int capacity)
@@ -1055,7 +1064,7 @@ static int sc27xx_fgu_hw_init(struct sc27xx_fgu_data *data)
 		return ret;
 
 	/* Enable the FGU module */
-	ret = regmap_update_bits(data->regmap, SC27XX_MODULE_EN0,
+	ret = regmap_update_bits(data->regmap, data->pdata->module_en,
 				 SC27XX_FGU_EN, SC27XX_FGU_EN);
 	if (ret) {
 		dev_err(data->dev, "failed to enable fgu\n");
@@ -1063,7 +1072,7 @@ static int sc27xx_fgu_hw_init(struct sc27xx_fgu_data *data)
 	}
 
 	/* Enable the FGU RTC clock to make it work */
-	ret = regmap_update_bits(data->regmap, SC27XX_CLK_EN0,
+	ret = regmap_update_bits(data->regmap, data->pdata->clk_en,
 				 SC27XX_FGU_RTC_EN, SC27XX_FGU_RTC_EN);
 	if (ret) {
 		dev_err(data->dev, "failed to enable fgu RTC clock\n");
@@ -1139,9 +1148,9 @@ static int sc27xx_fgu_hw_init(struct sc27xx_fgu_data *data)
 	return 0;
 
 disable_clk:
-	regmap_update_bits(data->regmap, SC27XX_CLK_EN0, SC27XX_FGU_RTC_EN, 0);
+	regmap_update_bits(data->regmap, data->pdata->clk_en, SC27XX_FGU_RTC_EN, 0);
 disable_fgu:
-	regmap_update_bits(data->regmap, SC27XX_MODULE_EN0, SC27XX_FGU_EN, 0);
+	regmap_update_bits(data->regmap, data->pdata->module_en, SC27XX_FGU_EN, 0);
 
 	return ret;
 }
@@ -1156,6 +1165,10 @@ static int sc27xx_fgu_probe(struct platform_device *pdev)
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+
+	data->pdata = of_device_get_match_data(dev);
+	if (!data->pdata)
+		return -EINVAL;
 
 	data->regmap = dev_get_regmap(dev->parent, NULL);
 	if (!data->regmap) {
@@ -1340,8 +1353,19 @@ static const struct dev_pm_ops sc27xx_fgu_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(sc27xx_fgu_suspend, sc27xx_fgu_resume)
 };
 
+static const struct sc27xx_fgu_variant_data sc2730_variant_data = {
+	.module_en = SC2730_MODULE_EN0,
+	.clk_en = SC2730_CLK_EN0,
+};
+
+static const struct sc27xx_fgu_variant_data sc2731_variant_data = {
+	.module_en = SC2731_MODULE_EN0,
+	.clk_en = SC2731_CLK_EN0,
+};
+
 static const struct of_device_id sc27xx_fgu_of_match[] = {
-	{ .compatible = "sprd,sc2731-fgu", },
+	{ .compatible = "sprd,sc2730-fgu", .data = &sc2730_variant_data },
+	{ .compatible = "sprd,sc2731-fgu", .data = &sc2731_variant_data },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sc27xx_fgu_of_match);
