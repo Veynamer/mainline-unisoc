@@ -528,7 +528,13 @@ static int sc27xx_fgu_get_charge_vol(struct sc27xx_fgu_data *data, int *val)
 
 static int sc27xx_fgu_get_temp(struct sc27xx_fgu_data *data, int *temp)
 {
-	return iio_read_channel_processed(data->channel, temp);
+	int ret;
+
+	ret = iio_read_channel_processed(data->channel, temp);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 static int sc27xx_fgu_get_health(struct sc27xx_fgu_data *data, int *health)
