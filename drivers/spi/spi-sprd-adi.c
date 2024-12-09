@@ -100,11 +100,23 @@
 /* Bits definitions for register REG_MODULE_EN */
 #define BIT_WDG_EN			BIT(2)
 
+/* Bit definitions for SWRST_CTRL0 */
+#define BIT_RST_EN			BIT(4)
+
+/* Bit definitions for SOFT_RST_HW */
+#define BIT_SOFT_RST			BIT(0)
+
 /* Registers definitions for PMIC */
 #define PMIC_RST_STATUS			0xee8
 #define PMIC_MODULE_EN			0xc08
 #define PMIC_CLK_EN			0xc18
 #define PMIC_WDG_BASE			0x80
+#define SC2730_RST_STATUS		0x1bac
+#define SC2730_MODULE_EN		0x1808
+#define SC2730_CLK_EN			0x1810
+#define SC2730_WDG_BASE			0x40
+#define SC2730_SWRST_CTRL0		0x1bf8
+#define SC2730_SOFT_RST_HW		0x1824
 
 /* Definition of PMIC reset status register */
 #define HWRST_STATUS_SECURITY		0x02
@@ -132,6 +144,8 @@ struct sprd_adi_wdg {
 	u32 rst_sts;
 	u32 wdg_en;
 	u32 wdg_clk;
+	u32 swrst_ctrl;
+	u32 soft_rst_hw;
 };
 
 struct sprd_adi_data {
@@ -368,6 +382,28 @@ static void sprd_adi_set_wdt_rst_mode(void *p)
 #endif
 }
 
+static void sprd_adi_set_wdt_rst_mode_ums512(void *p)
+{
+#if IS_ENABLED(CONFIG_SPRD_WATCHDOG)
+	u32 val;
+	struct sprd_adi *sadi = (struct sprd_adi *)p;
+
+	/* Init watchdog reset mode */
+	sprd_adi_read(sadi, SC2730_RST_STATUS, &val);
+	val |= HWRST_STATUS_WATCHDOG;
+	sprd_adi_write(sadi, SC2730_RST_STATUS, val);
+
+	/* Disable PMIC watchdog for now */
+	sprd_adi_read(sadi, SC2730_CLK_EN, &val);
+	val &= ~BIT_WDG_EN;
+	sprd_adi_write(sadi, SC2730_CLK_EN, val);
+
+	sprd_adi_read(sadi, SC2730_MODULE_EN, &val);
+	val &= ~BIT_WDG_EN;
+	sprd_adi_write(sadi, SC2730_MODULE_EN, val);
+#endif
+}
+
 static int sprd_adi_restart(struct sprd_adi *sadi, unsigned long mode,
 			    const char *cmd, struct sprd_adi_wdg *wdg)
 {
@@ -407,6 +443,21 @@ static int sprd_adi_restart(struct sprd_adi *sadi, unsigned long mode,
 	val &= ~HWRST_STATUS_WATCHDOG;
 	val |= reboot_mode;
 	sprd_adi_write(sadi, wdg->rst_sts, val);
+
+	/* Try direct reset if supported by PMIC */
+	if (wdg->swrst_ctrl) {
+		sprd_adi_read(sadi, wdg->swrst_ctrl, &val);
+		val |= BIT_RST_EN;
+		sprd_adi_write(sadi, wdg->swrst_ctrl, val);
+
+		sprd_adi_read(sadi, wdg->soft_rst_hw, &val);
+		val |= BIT_SOFT_RST;
+		sprd_adi_write(sadi, wdg->soft_rst_hw, val);
+
+		mdelay(1000);
+
+		/* Fall back to watchdog reset if failed */
+	}
 
 	/* Enable the interface clock of the watchdog */
 	sprd_adi_read(sadi, wdg->wdg_en, &val);
@@ -451,6 +502,20 @@ static int sprd_adi_restart_sc9860(struct sys_off_data *data)
 		.rst_sts = PMIC_RST_STATUS,
 		.wdg_en = PMIC_MODULE_EN,
 		.wdg_clk = PMIC_CLK_EN,
+	};
+
+	return sprd_adi_restart(data->cb_data, data->mode, data->cmd, &wdg);
+}
+
+static int sprd_adi_restart_ums512(struct sys_off_data *data)
+{
+	struct sprd_adi_wdg wdg = {
+		.base = SC2730_WDG_BASE,
+		.rst_sts = SC2730_RST_STATUS,
+		.wdg_en = SC2730_MODULE_EN,
+		.wdg_clk = SC2730_CLK_EN,
+		.swrst_ctrl = SC2730_SWRST_CTRL0,
+		.soft_rst_hw = SC2730_SOFT_RST_HW,
 	};
 
 	return sprd_adi_restart(data->cb_data, data->mode, data->cmd, &wdg);
@@ -619,6 +684,8 @@ static struct sprd_adi_data ums512_data = {
 	.slave_offset = ADI_15BIT_SLAVE_OFFSET,
 	.slave_addr_size = ADI_15BIT_SLAVE_ADDR_SIZE,
 	.read_check = sprd_adi_read_check_r3,
+	.restart = sprd_adi_restart_ums512,
+	.wdg_rst = sprd_adi_set_wdt_rst_mode_ums512,
 };
 
 static const struct of_device_id sprd_adi_of_match[] = {
