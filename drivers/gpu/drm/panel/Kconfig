@@ -105,6 +105,16 @@ config DRM_PANEL_BOE_TV101WUM_LL2
 	  Say Y here if you want to support for BOE TV101WUM-LL2
 	  WUXGA PANEL DSI Video Mode panel
 
+config DRM_PANEL_CHIPONE_ICNL9916_720_1600
+	tristate "Chipone ICNL9916 720x1600 panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the Chipone ICNL9916
+	  MIPI-DSI video mode panel with a resolution of 720x1600.
+	  This type of panel is mainly found on mobile phones.
+
 config DRM_PANEL_EBBG_FT8719
 	tristate "EBBG FT8719 panel driver"
 	depends on OF
