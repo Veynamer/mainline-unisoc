@@ -693,6 +693,10 @@ static int sc27xx_fgu_get_property(struct power_supply *psy,
 		val->intval = data->boot_volt;
 		break;
 
+	case POWER_SUPPLY_PROP_CALIBRATE:
+		val->intval = data->init_cap;
+		break;
+
 	default:
 		ret = -EINVAL;
 		break;
