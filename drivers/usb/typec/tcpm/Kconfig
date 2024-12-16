@@ -89,4 +89,11 @@ config TYPEC_QCOM_PMIC
 	  This driver enables Type-C role switching, orientation, Alternate
 	  mode and Power Delivery support both for VBUS and VCONN.
 
+config TYPEC_SC27XX_PD
+	tristate "Unisoc SC27xx series PMIC USB PD driver"
+	depends on MFD_SC27XX_PMIC
+	help
+	  This driver adds support for USB PD and Type-C
+	  functionalities sprovided by Unisoc SC27xx PMICs.
+
 endif # TYPEC_TCPM
