@@ -11,6 +11,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
+#include <linux/regulator/driver.h>
 #include <linux/types.h>
 #include <linux/usb/phy.h>
 #include <linux/device.h>
@@ -73,6 +74,7 @@
 #define BQ25611D_VBATREG_THRESH_uV	4290000
 #define BQ25618_VBATREG_THRESH_uV	4300000
 
+#define BQ256XX_OTG_CONFIG_MASK		BIT(5)
 #define BQ256XX_CHG_CONFIG_MASK		BIT(4)
 #define BQ256XX_CHG_CONFIG_BIT_SHIFT	4
 
@@ -1270,6 +1272,7 @@ static bool bq256xx_is_volatile_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case BQ256XX_INPUT_CURRENT_LIMIT:
+	case BQ256XX_CHARGER_CONTROL_0:
 	case BQ256XX_CHARGER_STATUS_0...BQ256XX_CHARGER_STATUS_2:
 		return true;
 	default:
@@ -1557,6 +1560,49 @@ static int bq256xx_power_supply_init(struct bq256xx_device *bq,
 	return 0;
 }
 
+#ifdef CONFIG_REGULATOR
+static const struct regulator_ops bq256xx_vbus_ops = {
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.is_enabled = regulator_is_enabled_regmap,
+};
+
+static const struct regulator_desc bq256xx_vbus_desc = {
+	.name = "bq256xx-usb-otg-vbus",
+	.of_match = "usb-otg-vbus",
+	.type = REGULATOR_VOLTAGE,
+	.owner = THIS_MODULE,
+	.ops = &bq256xx_vbus_ops,
+	.fixed_uV = 5000000,
+	.n_voltages = 1,
+	.enable_reg = BQ256XX_CHARGER_CONTROL_0,
+	.enable_mask = BQ256XX_OTG_CONFIG_MASK,
+};
+
+static int bq256xx_register_vbus_regulator(struct bq256xx_device *bq)
+{
+	struct regulator_config cfg = {
+		.dev = bq->dev,
+		.regmap = bq->regmap,
+	};
+	struct regulator_dev *reg;
+	int ret = 0;
+
+	reg = devm_regulator_register(bq->dev, &bq256xx_vbus_desc, &cfg);
+	if (IS_ERR(reg)) {
+		ret = PTR_ERR(reg);
+		dev_err(bq->dev, "Can't register regulator: %d\n", ret);
+	}
+
+	return ret;
+}
+#else
+static int bq256xx_register_vbus_regulator(struct bq256xx_device *bq)
+{
+	return 0;
+}
+#endif
+
 static int bq256xx_hw_init(struct bq256xx_device *bq)
 {
 	struct power_supply_battery_info *bat_info;
@@ -1764,6 +1810,10 @@ static int bq256xx_probe(struct i2c_client *client)
 		dev_err(dev, "Cannot initialize the chip.\n");
 		return ret;
 	}
+
+	ret = bq256xx_register_vbus_regulator(bq);
+	if (ret)
+		return 0;
 
 	return ret;
 }
