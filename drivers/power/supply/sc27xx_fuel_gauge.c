@@ -839,10 +839,15 @@ static void sc27xx_fgu_capacity_calibration(struct sc27xx_fgu_data *data,
 
 	/*
 	 * If we are in charging mode, then we do not need to calibrate the
-	 * lower capacity.
+	 * lower capacity. Only adjust it if it is outside the valid range.
 	 */
-	if (chg_sts == POWER_SUPPLY_STATUS_CHARGING)
+	if (chg_sts == POWER_SUPPLY_STATUS_CHARGING) {
+		if (cap > 100)
+			sc27xx_fgu_adjust_cap(data, 100);
+		else if (cap < 0)
+			sc27xx_fgu_adjust_cap(data, 0);
 		return;
+	}
 
 	if ((ocv > data->cap_table[0].ocv && cap < 100) || cap > 100) {
 		/*
