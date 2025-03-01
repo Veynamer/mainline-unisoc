@@ -299,6 +299,33 @@ config RCAR_REMOTEPROC
 	  This can be either built-in or a loadable module.
 	  If compiled as module (M), the module name is rcar_rproc.
 
+config SPRD_REMOTEPROC_COMMON
+	tristate
+
+config SPRD_MODEM_REMOTEPROC
+	tristate "Unisoc integrated modem processor support"
+	depends on ARCH_SPRD || COMPILE_TEST
+	select SPRD_REMOTEPROC_COMMON
+	help
+	  Say y here to support the integrated modem processor (also
+	  known as PUBCP) found on Spreadtrum/Unisoc SoCs.
+
+config SPRD_PMSYS_REMOTEPROC
+	tristate "Unisoc PMSYS remoteproc support"
+	depends on ARCH_SPRD || COMPILE_TEST
+	select SPRD_REMOTEPROC_COMMON
+	help
+	  Say y here to support the PMSYS remote processor found on
+	  Spreadtrum/Unisoc SoCs.
+
+config SPRD_WCN_REMOTEPROC
+	tristate "Unisoc wireless connectivity processor support"
+	depends on ARCH_SPRD || COMPILE_TEST
+	select SPRD_REMOTEPROC_COMMON
+	help
+	  Say y here to support the integrated WCN processor found on
+	  Spreadtrum/Unisoc SoCs.
+
 config ST_REMOTEPROC
 	tristate "ST remoteproc support"
 	depends on ARCH_STI
