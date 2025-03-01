@@ -60,6 +60,7 @@
 #define SC27XX_FGU_MODE_AREA_MASK	GENMASK(15, 12)
 #define SC27XX_FGU_CAP_AREA_MASK	GENMASK(11, 0)
 #define SC27XX_FGU_MODE_AREA_SHIFT	12
+#define SC27XX_FGU_CAP_INTEGER_MASK	GENMASK(7, 0)
 
 #define SC27XX_FGU_FIRST_POWERTON	GENMASK(3, 0)
 #define SC27XX_FGU_DEFAULT_CAP		GENMASK(11, 0)
@@ -282,7 +283,7 @@ static int sc27xx_fgu_read_last_cap(struct sc27xx_fgu_data *data, int *cap)
 	if (ret)
 		return ret;
 
-	*cap = value & SC27XX_FGU_CAP_AREA_MASK;
+	*cap = value & SC27XX_FGU_CAP_INTEGER_MASK;
 	return 0;
 }
 
