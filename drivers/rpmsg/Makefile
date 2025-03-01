@@ -10,4 +10,9 @@ obj-$(CONFIG_RPMSG_QCOM_GLINK) += qcom_glink.o
 obj-$(CONFIG_RPMSG_QCOM_GLINK_RPM) += qcom_glink_rpm.o
 obj-$(CONFIG_RPMSG_QCOM_GLINK_SMEM) += qcom_glink_smem.o
 obj-$(CONFIG_RPMSG_QCOM_SMD)	+= qcom_smd.o
+obj-$(CONFIG_RPMSG_SPRD_SIPC)	+= sprd_sipc.o
+sprd_sipc-objs			:= sprd_sipc_core.o \
+				   sprd_sipc_sblock.o \
+				   sprd_sipc_sbuf.o \
+				   sprd_sipc_sipx.o
 obj-$(CONFIG_RPMSG_VIRTIO)	+= virtio_rpmsg_bus.o
