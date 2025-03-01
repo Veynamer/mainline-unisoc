@@ -29,8 +29,9 @@
 
 /* Bit and mask definition for inbox's SPRD_MBOX_FIFO_STS register */
 #define SPRD_INBOX_FIFO_DELIVER_MASK		GENMASK(23, 16)
-#define SPRD_INBOX_FIFO_OVERLOW_MASK		GENMASK(15, 8)
 #define SPRD_INBOX_FIFO_DELIVER_SHIFT		16
+#define SPRD_INBOX_FIFO_OVERFLOW_MASK		GENMASK(15, 8)
+#define SPRD_INBOX_FIFO_OVERFLOW_SHIFT		8
 #define SPRD_INBOX_FIFO_BUSY_MASK		GENMASK(7, 0)
 
 /* Bit and mask definition for r2 inbox's SPRD_MBOX_FIFO_RST register */
@@ -40,6 +41,8 @@
 #define SPRD_INBOX_FIFO_DELIVER_MASK_R2		GENMASK(15, 0)
 
 /* Bit and mask definition for r2 inbox's SPRD_MBOX_IN_FIFO_STS2 register */
+#define SPRD_INBOX_FIFO_OVERFLOW_MASK_R2	GENMASK(31, 16)
+#define SPRD_INBOX_FIFO_OVERFLOW_SHIFT_R2	16
 #define SPRD_INBOX_FIFO_BUSY_MASK_R2		GENMASK(15, 0)
 
 /* Bit and mask definition for SPRD_MBOX_IRQ_STS register */
@@ -175,7 +178,7 @@ static irqreturn_t sprd_mbox_inbox_isr(int irq, void *data)
 {
 	struct sprd_mbox_priv *priv = data;
 	struct mbox_chan *chan;
-	u32 fifo_sts, fifo_sts2, send_sts, busy, id;
+	u32 fifo_sts, fifo_sts2, send_sts, overflow_sts, busy, id;
 
 	fifo_sts = readl(priv->inbox_base + SPRD_MBOX_FIFO_STS);
 	if (priv->info->version != SPRD_MBOX_R1)
@@ -185,12 +188,34 @@ static irqreturn_t sprd_mbox_inbox_isr(int irq, void *data)
 	if (priv->info->version == SPRD_MBOX_R1) {
 		send_sts = (fifo_sts & SPRD_INBOX_FIFO_DELIVER_MASK) >>
 			SPRD_INBOX_FIFO_DELIVER_SHIFT;
+		overflow_sts = (fifo_sts & SPRD_INBOX_FIFO_OVERFLOW_MASK) >>
+			SPRD_INBOX_FIFO_OVERFLOW_SHIFT;
 	} else {
 		send_sts = fifo_sts & SPRD_INBOX_FIFO_DELIVER_MASK_R2;
+		overflow_sts = (fifo_sts2 & SPRD_INBOX_FIFO_OVERFLOW_MASK_R2) >>
+			SPRD_INBOX_FIFO_OVERFLOW_SHIFT_R2;
 	}
-	if (!send_sts) {
-		dev_warn_ratelimited(priv->dev, "spurious inbox interrupt\n");
-		return IRQ_NONE;
+
+	if (overflow_sts)
+		dev_warn_ratelimited(priv->dev, "overflow: %04x\n", overflow_sts);
+
+	/* Spurious inbox interrupts are quite common for some reason */
+	if (!send_sts)
+		return IRQ_HANDLED;
+
+	if (priv->info->version == SPRD_MBOX_R1)
+		busy = fifo_sts & SPRD_INBOX_FIFO_BUSY_MASK;
+	else
+		busy = fifo_sts2 & SPRD_INBOX_FIFO_BUSY_MASK_R2;
+
+	/* Clear FIFO delivery and overflow status before sending next message */
+	if (priv->info->version == SPRD_MBOX_R1) {
+		writel(fifo_sts &
+		       (SPRD_INBOX_FIFO_DELIVER_MASK | SPRD_INBOX_FIFO_OVERFLOW_MASK),
+		       priv->inbox_base + SPRD_MBOX_FIFO_RST);
+	} else {
+		writel(SPRD_INBOX_FIFO_CLEAR_MASK_R2,
+		       priv->inbox_base + SPRD_MBOX_FIFO_RST);
 	}
 
 	while (send_sts) {
@@ -203,22 +228,13 @@ static irqreturn_t sprd_mbox_inbox_isr(int irq, void *data)
 		 * Check if the message was fetched by remote target, if yes,
 		 * that means the transmission has been completed.
 		 */
-		if (priv->info->version == SPRD_MBOX_R1)
-			busy = fifo_sts & SPRD_INBOX_FIFO_BUSY_MASK;
-		else
-			busy = fifo_sts2 & SPRD_INBOX_FIFO_BUSY_MASK_R2;
-		if (!(busy & BIT(id)))
-			mbox_chan_txdone(chan, 0);
-	}
-
-	/* Clear FIFO delivery and overflow status */
-	if (priv->info->version == SPRD_MBOX_R1) {
-		writel(fifo_sts &
-		       (SPRD_INBOX_FIFO_DELIVER_MASK | SPRD_INBOX_FIFO_OVERLOW_MASK),
-		       priv->inbox_base + SPRD_MBOX_FIFO_RST);
-	} else {
-		writel(SPRD_INBOX_FIFO_CLEAR_MASK_R2,
-		       priv->inbox_base + SPRD_MBOX_FIFO_RST);
+		if (!(busy & BIT(id))) {
+			if (chan->cl)
+				mbox_chan_txdone(chan, 0);
+			else
+				dev_warn(priv->dev,
+					"message delivered but no client on ch[%d]\n", id);
+		}
 	}
 
 	/* Clear irq status */
@@ -255,8 +271,13 @@ static int sprd_mbox_flush(struct mbox_chan *chan, unsigned long timeout)
 	timeout = jiffies + msecs_to_jiffies(timeout);
 
 	while (time_before(jiffies, timeout)) {
-		busy = readl(priv->inbox_base + SPRD_MBOX_FIFO_STS) &
-			SPRD_INBOX_FIFO_BUSY_MASK;
+		if (priv->info->version == SPRD_MBOX_R1) {
+			busy = readl(priv->inbox_base + SPRD_MBOX_FIFO_STS) &
+				SPRD_INBOX_FIFO_BUSY_MASK;
+		} else {
+			busy = readl(priv->inbox_base + SPRD_MBOX_IN_FIFO_STS2) &
+				SPRD_INBOX_FIFO_BUSY_MASK_R2;
+		}
 		if (!(busy & BIT(id))) {
 			mbox_chan_txdone(chan, 0);
 			return 0;
@@ -278,20 +299,20 @@ static int sprd_mbox_startup(struct mbox_chan *chan)
 		/* Select outbox FIFO mode and reset the outbox FIFO status */
 		writel(0x0, priv->outbox_base + SPRD_MBOX_FIFO_RST);
 
-		/* Enable inbox FIFO overflow and delivery interrupt */
-		val = readl(priv->inbox_base + SPRD_MBOX_IRQ_MSK);
+		/* Enable only inbox FIFO overflow and delivery interrupts */
+		val = SPRD_INBOX_FIFO_IRQ_MASK;
 		val &= ~(SPRD_INBOX_FIFO_OVERFLOW_IRQ | SPRD_INBOX_FIFO_DELIVER_IRQ);
 		writel(val, priv->inbox_base + SPRD_MBOX_IRQ_MSK);
 
-		/* Enable outbox FIFO not empty interrupt */
-		val = readl(priv->outbox_base + SPRD_MBOX_IRQ_MSK);
+		/* Enable only outbox FIFO not empty interrupts */
+		val = SPRD_OUTBOX_FIFO_IRQ_MASK;
 		val &= ~SPRD_OUTBOX_FIFO_NOT_EMPTY_IRQ;
 		writel(val, priv->outbox_base + SPRD_MBOX_IRQ_MSK);
 
 		/* Enable supplementary outbox as the fundamental one */
 		if (priv->supp_base) {
 			writel(0x0, priv->supp_base + SPRD_MBOX_FIFO_RST);
-			val = readl(priv->supp_base + SPRD_MBOX_IRQ_MSK);
+			val = SPRD_OUTBOX_FIFO_IRQ_MASK;
 			val &= ~SPRD_OUTBOX_FIFO_NOT_EMPTY_IRQ;
 			writel(val, priv->supp_base + SPRD_MBOX_IRQ_MSK);
 		}
