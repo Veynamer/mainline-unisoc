@@ -814,9 +814,10 @@ static void sc27xx_fgu_adjust_cap(struct sc27xx_fgu_data *data, int cap)
 	int ret;
 
 	data->init_cap = cap;
-	ret = sc27xx_fgu_get_clbcnt(data, &data->init_clbcnt);
+	data->init_clbcnt = sc27xx_fgu_cap_to_clbcnt(data, cap);
+	ret = sc27xx_fgu_set_clbcnt(data, data->init_clbcnt);
 	if (ret)
-		dev_err(data->dev, "failed to get init coulomb counter\n");
+		dev_err(data->dev, "failed to adjust coulomb counter\n");
 }
 
 static void sc27xx_fgu_capacity_calibration(struct sc27xx_fgu_data *data,
