@@ -295,21 +295,8 @@ static int sc27xx_fgu_read_last_cap(struct sc27xx_fgu_data *data, int *cap)
  */
 static int sc27xx_fgu_get_boot_capacity(struct sc27xx_fgu_data *data, int *cap)
 {
-	int volt, cur, oci, ocv, ret;
+	int volt, cur, oci, ocv, ocv_cap, ret;
 	bool is_first_poweron = sc27xx_fgu_is_first_poweron(data);
-
-	/*
-	 * If system is not the first power on, we should use the last saved
-	 * battery capacity as the initial battery capacity. Otherwise we should
-	 * re-calculate the initial battery capacity.
-	 */
-	if (!is_first_poweron) {
-		ret = sc27xx_fgu_read_last_cap(data, cap);
-		if (ret)
-			return ret;
-
-		return sc27xx_fgu_save_boot_mode(data, SC27XX_FGU_NORMAIL_POWERTON);
-	}
 
 	/*
 	 * After system booting on, the SC27XX_FGU_CLBCNT_QMAXL register saved
@@ -340,8 +327,31 @@ static int sc27xx_fgu_get_boot_capacity(struct sc27xx_fgu_data *data, int *cap)
 	 * Parse the capacity table to look up the correct capacity percent
 	 * according to current battery's corresponding OCV values.
 	 */
-	*cap = power_supply_ocv2cap_simple(data->cap_table, data->table_len,
-					   ocv);
+	ocv_cap = power_supply_ocv2cap_simple(data->cap_table, data->table_len,
+					      ocv);
+
+	/*
+	 * If system is not the first power on, we should use the last saved
+	 * battery capacity as the initial battery capacity. Otherwise we should
+	 * use the capacity value calculated above.
+	 */
+	if (!is_first_poweron) {
+		ret = sc27xx_fgu_read_last_cap(data, cap);
+		if (ret)
+			return ret;
+
+		/*
+		 * Limit the saved capacity to a reasonable range based on
+		 * the calculated estimate. This is needed because the saved
+		 * value may be outdated.
+		 */
+		if (*cap < ocv_cap - 5)
+			*cap = ocv_cap - 5;
+		else if (*cap > ocv_cap + 5)
+			*cap = ocv_cap + 5;
+	} else {
+		*cap = ocv_cap;
+	}
 
 	ret = sc27xx_fgu_save_last_cap(data, *cap);
 	if (ret)
