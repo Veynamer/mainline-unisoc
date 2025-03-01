@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+if ARCH_SPRD || COMPILE_TEST
+
+config SPRD_PM_DOMAINS
+	bool "Unisoc PMU power domain support"
+	depends on PM
+	select PM_GENERIC_DOMAINS
+
+endif
