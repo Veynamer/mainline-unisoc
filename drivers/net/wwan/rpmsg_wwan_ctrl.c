@@ -3,6 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/rpmsg.h>
 #include <linux/wwan.h>
@@ -113,6 +114,7 @@ static struct device *rpmsg_wwan_find_parent(struct device *dev)
 static int rpmsg_wwan_ctrl_probe(struct rpmsg_device *rpdev)
 {
 	struct rpmsg_wwan_dev *rpwwan;
+	enum wwan_port_type port_type;
 	struct wwan_port *port;
 	struct device *parent;
 
@@ -127,9 +129,14 @@ static int rpmsg_wwan_ctrl_probe(struct rpmsg_device *rpdev)
 	rpwwan->rpdev = rpdev;
 	dev_set_drvdata(&rpdev->dev, rpwwan);
 
+	if (rpdev->dev.of_node)
+		port_type = (uintptr_t)of_device_get_match_data(&rpdev->dev);
+	else
+		port_type = rpdev->id.driver_data;
+
 	/* Register as a wwan port, id.driver_data contains wwan port type */
-	port = wwan_create_port(parent, rpdev->id.driver_data,
-				&rpmsg_wwan_pops, NULL, rpwwan);
+	port = wwan_create_port(parent, port_type, &rpmsg_wwan_pops,
+				NULL, rpwwan);
 	if (IS_ERR(port))
 		return PTR_ERR(port);
 
@@ -145,6 +152,16 @@ static void rpmsg_wwan_ctrl_remove(struct rpmsg_device *rpdev)
 	wwan_remove_port(rpwwan->wwan_port);
 }
 
+static const struct of_device_id rpmsg_wwan_ctrl_of_table[] = {
+	/* RPMSG channels for Unisoc SoCs with integrated LTE modem */
+	{ .compatible = "sprd,spipe-at", .data = (void*)WWAN_PORT_AT },
+	{ .compatible = "sprd,spipe-nv", .data = (void*)WWAN_PORT_SPRDNV },
+	{ .compatible = "sprd,spipe-diag", .data = (void*)WWAN_PORT_SPRDDIAG },
+	{ .compatible = "sprd,spipe-time", .data = (void*)WWAN_PORT_SPRDTIME },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, rpmsg_wwan_ctrl_of_table);
+
 static const struct rpmsg_device_id rpmsg_wwan_ctrl_id_table[] = {
 	/* RPMSG channels for Qualcomm SoCs with integrated modem */
 	{ .name = "DATA5_CNTL", .driver_data = WWAN_PORT_QMI },
@@ -156,6 +173,7 @@ MODULE_DEVICE_TABLE(rpmsg, rpmsg_wwan_ctrl_id_table);
 
 static struct rpmsg_driver rpmsg_wwan_ctrl_driver = {
 	.drv.name = "rpmsg_wwan_ctrl",
+	.drv.of_match_table = rpmsg_wwan_ctrl_of_table,
 	.id_table = rpmsg_wwan_ctrl_id_table,
 	.probe = rpmsg_wwan_ctrl_probe,
 	.remove = rpmsg_wwan_ctrl_remove,

@@ -342,6 +342,18 @@ static const struct {
 		.name = "MIPC",
 		.devsuf = "mipc",
 	},
+	[WWAN_PORT_SPRDNV] = {
+		.name = "SPRDNV",
+		.devsuf = "sprdnv",
+	},
+	[WWAN_PORT_SPRDDIAG] = {
+		.name = "SPRDDIAG",
+		.devsuf = "sprddiag",
+	},
+	[WWAN_PORT_SPRDTIME] = {
+		.name = "SPRDTIME",
+		.devsuf = "sprdtime",
+	},
 };
 
 static ssize_t type_show(struct device *dev, struct device_attribute *attr,
