@@ -92,6 +92,17 @@ config RPMSG_WWAN_CTRL
 	  To compile this driver as a module, choose M here: the module will be
 	  called rpmsg_wwan_ctrl.
 
+config RPMSG_WWAN_NET
+	tristate "RPMSG WWAN network driver"
+	depends on RPMSG
+	help
+	  This driver provides access to raw IP network data channels available
+	  via RPMSG. This is mainly used for modems integrated into Unisoc
+	  SoCs, which provide SIPC channels for mobile data.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called rpmsg_wwan_net.
+
 config IOSM
 	tristate "IOSM Driver for Intel M.2 WWAN Device"
 	depends on PCI
