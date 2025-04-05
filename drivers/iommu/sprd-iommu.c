@@ -318,7 +318,7 @@ static int sprd_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	unsigned long flags;
 	unsigned int i;
 	u32 *pgt_base_iova;
-	u32 pabase = (u32)paddr;
+	u32 ppage = (u32)(paddr >> SPRD_IOMMU_PAGE_SHIFT);
 	unsigned long start = domain->geometry.aperture_start;
 	unsigned long end = domain->geometry.aperture_end;
 
@@ -337,8 +337,8 @@ static int sprd_iommu_map(struct iommu_domain *domain, unsigned long iova,
 
 	spin_lock_irqsave(&dom->pgtlock, flags);
 	for (i = 0; i < pgcount; i++) {
-		pgt_base_iova[i] = pabase >> SPRD_IOMMU_PAGE_SHIFT;
-		pabase += SPRD_IOMMU_PAGE_SIZE;
+		pgt_base_iova[i] = ppage;
+		ppage += 1;
 	}
 	spin_unlock_irqrestore(&dom->pgtlock, flags);
 
