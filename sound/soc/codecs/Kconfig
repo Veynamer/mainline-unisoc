@@ -293,6 +293,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_UDA1334
 	imply SND_SOC_UDA1342
 	imply SND_SOC_UDA1380
+	imply SND_SOC_UMS9230_DIGITAL
 	imply SND_SOC_WCD9335
 	imply SND_SOC_WCD934X
 	imply SND_SOC_WCD937X_SDW
@@ -2237,6 +2238,11 @@ config SND_SOC_UDA1342
 config SND_SOC_UDA1380
 	tristate
 	depends on I2C
+
+config SND_SOC_UMS9230_DIGITAL
+	tristate "UMS9230 Digital Codec"
+	depends on ARCH_SPRD || COMPILE_TEST
+	depends on REGMAP_MMIO
 
 config SND_SOC_WCD_CLASSH
 	tristate
