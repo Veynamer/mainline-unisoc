@@ -528,17 +528,9 @@ static int sprd_iommu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, sdev);
 	sdev->dev = dev;
 
-	ret = iommu_device_sysfs_add(&sdev->iommu, dev, NULL, dev_name(dev));
-	if (ret)
-		goto free_page;
-
-	ret = iommu_device_register(&sdev->iommu, &sprd_iommu_ops, dev);
-	if (ret)
-		goto remove_sysfs;
-
 	ret = sprd_iommu_clk_enable(sdev);
 	if (ret)
-		goto unregister_iommu;
+		goto free_page;
 
 	ret = sprd_iommu_get_version(sdev);
 	if (ret < 0) {
@@ -547,14 +539,20 @@ static int sprd_iommu_probe(struct platform_device *pdev)
 	}
 	sdev->ver = ret;
 
+	ret = iommu_device_sysfs_add(&sdev->iommu, dev, NULL, dev_name(dev));
+	if (ret)
+		goto disable_clk;
+
+	ret = iommu_device_register(&sdev->iommu, &sprd_iommu_ops, dev);
+	if (ret)
+		goto remove_sysfs;
+
 	return 0;
 
-disable_clk:
-	sprd_iommu_clk_disable(sdev);
-unregister_iommu:
-	iommu_device_unregister(&sdev->iommu);
 remove_sysfs:
 	iommu_device_sysfs_remove(&sdev->iommu);
+disable_clk:
+	sprd_iommu_clk_disable(sdev);
 free_page:
 	dma_free_coherent(sdev->dev, SPRD_IOMMU_PAGE_SIZE, sdev->prot_page_va, sdev->prot_page_pa);
 	return ret;
@@ -567,8 +565,8 @@ static void sprd_iommu_remove(struct platform_device *pdev)
 	dma_free_coherent(sdev->dev, SPRD_IOMMU_PAGE_SIZE, sdev->prot_page_va, sdev->prot_page_pa);
 
 	platform_set_drvdata(pdev, NULL);
-	iommu_device_sysfs_remove(&sdev->iommu);
 	iommu_device_unregister(&sdev->iommu);
+	iommu_device_sysfs_remove(&sdev->iommu);
 }
 
 static struct platform_driver sprd_iommu_driver = {
