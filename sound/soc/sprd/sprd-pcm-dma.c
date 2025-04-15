@@ -28,7 +28,6 @@ struct sprd_pcm_dma_data {
 
 struct sprd_pcm_dma_private {
 	struct snd_pcm_substream *substream;
-	struct sprd_pcm_dma_params *params;
 	struct sprd_pcm_dma_data data[SPRD_PCM_CHANNEL_MAX];
 	int hw_chan;
 	int dma_addr_offset;
@@ -155,12 +154,12 @@ static void sprd_pcm_release_dma_channel(struct snd_pcm_substream *substream)
 
 static int sprd_pcm_request_dma_channel(struct snd_soc_component *component,
 					struct snd_pcm_substream *substream,
+					struct sprd_pcm_dma_params *dma_params,
 					int channels)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct sprd_pcm_dma_private *dma_private = runtime->private_data;
 	struct device *dev = component->dev;
-	struct sprd_pcm_dma_params *dma_params = dma_private->params;
 	int i;
 
 	if (channels > SPRD_PCM_CHANNEL_MAX) {
@@ -203,17 +202,13 @@ static int sprd_pcm_hw_params(struct snd_soc_component *component,
 	dma_params = snd_soc_dai_get_dma_data(snd_soc_rtd_to_cpu(rtd, 0), substream);
 	if (!dma_params) {
 		dev_warn(component->dev, "no dma parameters setting\n");
-		dma_private->params = NULL;
 		return 0;
 	}
 
-	if (!dma_private->params) {
-		dma_private->params = dma_params;
-		ret = sprd_pcm_request_dma_channel(component,
-						   substream, channels);
-		if (ret)
-			return ret;
-	}
+	ret = sprd_pcm_request_dma_channel(component, substream, dma_params,
+					   channels);
+	if (ret)
+		return ret;
 
 	sg_num = totsize / period;
 	dma_private->dma_addr_offset = totsize / channels;
