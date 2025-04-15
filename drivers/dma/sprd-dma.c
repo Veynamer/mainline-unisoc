@@ -1023,14 +1023,6 @@ sprd_dma_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
 			start_dst = dst;
 		}
 
-		/*
-		 * The link-list mode needs at least 2 link-list
-		 * configurations. If there is only one sg, it doesn't
-		 * need to fill the link-list configuration.
-		 */
-		if (sglen < 2)
-			break;
-
 		ret = sprd_dma_fill_linklist_desc(chan, sglen, i, src, dst, len,
 						  dir, flags, slave_cfg);
 		if (ret) {
