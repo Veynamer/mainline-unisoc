@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Spreadtrum and Unisoc SoC drivers"
+
+config SPRD_AGDSP
+	tristate "Audio DSP support"
+	depends on ARCH_SPRD || COMPILE_TEST
+	depends on MAILBOX
+	help
+	  Say y here to enable support for communication with the audio
+	  DSP found in Spreadtrum/Unisoc SoCs.
+
+endmenu
