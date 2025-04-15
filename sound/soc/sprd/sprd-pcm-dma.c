@@ -205,6 +205,9 @@ static int sprd_pcm_hw_params(struct snd_soc_component *component,
 		return 0;
 	}
 
+	if (dma_params->hw_channels < channels)
+		channels = dma_params->hw_channels;
+
 	ret = sprd_pcm_request_dma_channel(component, substream, dma_params,
 					   channels);
 	if (ret)

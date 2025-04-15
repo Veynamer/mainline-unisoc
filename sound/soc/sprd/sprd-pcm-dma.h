@@ -13,6 +13,7 @@ struct sprd_pcm_dma_params {
 	u32 datawidth[SPRD_PCM_CHANNEL_MAX];
 	u32 fragment_len[SPRD_PCM_CHANNEL_MAX];
 	const char *chan_name[SPRD_PCM_CHANNEL_MAX];
+	int hw_channels;
 };
 
 struct sprd_compr_playinfo {
