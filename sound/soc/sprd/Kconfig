@@ -1,13 +1,19 @@
 # SPDX-License-Identifier: GPL-2.0-only
-menu "Spreadtrum"
-
-config SND_SOC_SPRD
-	tristate "SoC Audio for the Spreadtrum SoC chips"
+menuconfig SND_SOC_SPRD
+	tristate "Spreadtrum"
 	depends on ARCH_SPRD || COMPILE_TEST
-	select SND_SOC_COMPRESS
 	help
 	  Say Y or M if you want to add support for codecs attached to
 	  the Spreadtrum SoCs' Audio interfaces.
+
+if SND_SOC_SPRD
+
+config SND_SOC_SPRD_COMMON
+	tristate
+
+config SND_SOC_SPRD_PLATFORM
+	tristate
+	select SND_SOC_COMPRESS
 
 config SND_SOC_SPRD_MCDT
 	tristate "Spreadtrum multi-channel data transfer support"
@@ -17,6 +23,17 @@ config SND_SOC_SPRD_MCDT
 	  is used for sound stream transmission between audio subsystem
 	  and other AP/CP subsystem.
 
+config SND_SOC_SPRD_UMS9230
+	tristate "SoC Audio support for UMS9230"
+	depends on SND_SOC_SPRD
+	select SND_SOC_SPRD_COMMON
+	select SND_SOC_SPRD_MCDT
+	select SND_SOC_SPRD_PLATFORM
+	select SND_SOC_SPRD_VBC_V4_DSP
+	help
+	  Say Y here to enable audio support for typical systems such as
+	  mobile phones based on the Unisoc UMS9230 SoCs
+
 config SND_SOC_SPRD_VBC_V4_DSP
 	tristate "Unisoc VBC v4 (DSP) support"
 	depends on SPRD_AGDSP
@@ -25,4 +42,4 @@ config SND_SOC_SPRD_VBC_V4_DSP
 	  Say Y here to add support for DSP-based audio in SoCs such as
 	  UMS9230.
 
-endmenu
+endif
