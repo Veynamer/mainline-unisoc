@@ -240,6 +240,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_RT9123
 	imply SND_SOC_RTQ9124
 	imply SND_SOC_RTQ9128
+	imply SND_SOC_SC2730
 	imply SND_SOC_SDW_MOCKUP
 	imply SND_SOC_SGTL5000
 	imply SND_SOC_SI476X
@@ -1877,6 +1878,13 @@ config SND_SOC_RTQ9128
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called snd-soc-rtq9128.
+
+config SND_SOC_SC2730
+	tristate "Spreadtrum SC2730 PMIC codec"
+	depends on MFD_SC27XX_PMIC || COMPILE_TEST
+	help
+	  This driver provides support for the integrated audio codec in
+	  the SC2730 PMIC.
 
 config SND_SOC_SDW_MOCKUP
 	tristate "SoundWire mockup codec"
