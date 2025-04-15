@@ -17,4 +17,12 @@ config SND_SOC_SPRD_MCDT
 	  is used for sound stream transmission between audio subsystem
 	  and other AP/CP subsystem.
 
+config SND_SOC_SPRD_VBC_V4_DSP
+	tristate "Unisoc VBC v4 (DSP) support"
+	depends on SPRD_AGDSP
+	depends on SND_SOC_SPRD_MCDT
+	help
+	  Say Y here to add support for DSP-based audio in SoCs such as
+	  UMS9230.
+
 endmenu
