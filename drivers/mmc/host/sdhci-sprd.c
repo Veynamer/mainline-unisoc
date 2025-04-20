@@ -613,12 +613,12 @@ static int sdhci_sprd_get_best_clk_sample(struct mmc_host *mmc, u8 *value)
 			if (range_length < count) {
 				range_length = count;
 				range_end = i - 1;
-				count = 0;
 			}
+			count = 0;
 		}
 	}
 
-	if (!count)
+	if (!count && !range_length)
 		return -EIO;
 
 	if (count > range_length) {
