@@ -19,9 +19,18 @@ description:
 
 properties:
   compatible:
-    enum:
-      - sprd,sc9860-timer
-      - sprd,sc9860-suspend-timer
+    oneOf:
+      - items:
+          - enum:
+              - sprd,ums9230-suspend-timer
+          - const: sprd,sc9860-suspend-timer
+      - items:
+          - enum:
+              - sprd,ums9230-timer
+          - const: sprd,sc9860-timer
+      - enum:
+          - sprd,sc9860-timer
+          - sprd,sc9860-suspend-timer
 
   reg:
     maxItems: 1
