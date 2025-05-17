@@ -19,6 +19,7 @@ properties:
           - mobileye,eyeq5-bootloader-config
           - raspberrypi,bootloader-config
           - raspberrypi,bootloader-public-key
+          - sprd,ums9230-cache-efuse
       - const: nvmem-rmem
 
   reg:
