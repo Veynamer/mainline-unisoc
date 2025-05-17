@@ -13,7 +13,12 @@ maintainers:
 
 properties:
   compatible:
-    const: sprd,ums512-pwm
+    oneOf:
+      - items:
+          - enum:
+            - sprd,ums9230-pwm
+          - const: sprd,ums512-pwm
+      - const: sprd,ums512-pwm
 
   reg:
     maxItems: 1
