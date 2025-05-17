@@ -44,6 +44,7 @@ properties:
               - mediatek,mt8188-mali
               - mediatek,mt8192-mali
               - mediatek,mt8370-mali
+              - sprd,ums9230-mali
           - const: arm,mali-valhall-jm # Mali Valhall GPU model/revision is fully discoverable
 
   reg:
