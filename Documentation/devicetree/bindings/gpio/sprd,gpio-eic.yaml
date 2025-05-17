@@ -52,18 +52,22 @@ properties:
       - items:
           - enum:
               - sprd,ums512-eic-debounce
+              - sprd,ums9230-eic-debounce
           - const: sprd,sc9860-eic-debounce
       - items:
           - enum:
               - sprd,ums512-eic-latch
+              - sprd,ums9230-eic-latch
           - const: sprd,sc9860-eic-latch
       - items:
           - enum:
               - sprd,ums512-eic-async
+              - sprd,ums9230-eic-async
           - const: sprd,sc9860-eic-async
       - items:
           - enum:
               - sprd,ums512-eic-sync
+              - sprd,ums9230-eic-sync
           - const: sprd,sc9860-eic-sync
       - items:
           - enum:
@@ -72,9 +76,9 @@ properties:
 
   reg:
     minItems: 1
-    maxItems: 3
+    maxItems: 6
     description:
-      EIC controller can support maximum 3 banks which has its own
+      EIC controller can support maximum 6 banks which has its own
       address base.
 
   gpio-controller: true

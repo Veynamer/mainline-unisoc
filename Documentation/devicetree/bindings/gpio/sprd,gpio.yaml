@@ -24,6 +24,7 @@ properties:
       - items:
           - enum:
               - sprd,ums512-gpio
+              - sprd,ums9230-gpio
           - const: sprd,sc9860-gpio
 
   reg:
