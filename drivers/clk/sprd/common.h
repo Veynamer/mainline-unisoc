@@ -24,6 +24,13 @@ struct sprd_clk_desc {
 	struct sprd_clk_common		**clk_clks;
 	unsigned long			num_clk_clks;
 	struct clk_hw_onecell_data      *hw_clks;
+	bool				need_regcache;
+};
+
+struct sprd_clk_drvdata {
+	struct regmap	*regmap;
+	struct clk	*gate_clk;
+	bool		cache_enabled;
 };
 
 static inline struct sprd_clk_common *
@@ -34,5 +41,7 @@ static inline struct sprd_clk_common *
 int sprd_clk_regmap_init(struct platform_device *pdev,
 			 const struct sprd_clk_desc *desc);
 int sprd_clk_probe(struct device *dev, struct clk_hw_onecell_data *clkhw);
+
+extern const struct dev_pm_ops sprd_clk_pm_ops;
 
 #endif /* _SPRD_CLK_COMMON_H_ */

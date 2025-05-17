@@ -5,10 +5,12 @@
 // Copyright (C) 2017 Spreadtrum, Inc.
 // Author: Chunyan Zhang <chunyan.zhang@spreadtrum.com>
 
+#include <linux/clk.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 
 #include "common.h"
@@ -41,9 +43,12 @@ int sprd_clk_regmap_init(struct platform_device *pdev,
 	void __iomem *base;
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node, *np;
+	struct sprd_clk_drvdata *data;
 	struct regmap *regmap;
 	struct resource *res;
 	struct regmap_config reg_config = sprdclk_regmap_config;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 
 	if (of_property_present(node, "sprd,syscon")) {
 		regmap = syscon_regmap_lookup_by_phandle(node, "sprd,syscon");
@@ -75,6 +80,14 @@ int sprd_clk_regmap_init(struct platform_device *pdev,
 	}
 
 	sprd_clk_set_regmap(desc, regmap);
+
+	data->gate_clk = devm_clk_get_optional_enabled(&pdev->dev, "enable");
+	if (IS_ERR(data->gate_clk))
+		return dev_err_probe(dev, PTR_ERR(data->gate_clk),
+				     "failed to get register gate clock\n");
+
+	data->regmap = regmap;
+	platform_set_drvdata(pdev, data);
 
 	return 0;
 }
@@ -108,6 +121,32 @@ int sprd_clk_probe(struct device *dev, struct clk_hw_onecell_data *clkhw)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(sprd_clk_probe);
+
+static int __maybe_unused sprd_clk_suspend(struct device *dev)
+{
+	struct sprd_clk_drvdata *data = dev_get_drvdata(dev);
+
+	clk_disable_unprepare(data->gate_clk);
+
+	return 0;
+}
+
+static int __maybe_unused sprd_clk_resume(struct device *dev)
+{
+	struct sprd_clk_drvdata *data = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_prepare_enable(data->gate_clk);
+	if (ret) {
+		dev_err(dev, "failed to enable register gate clock: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+EXPORT_GPL_RUNTIME_DEV_PM_OPS(sprd_clk_pm_ops, sprd_clk_suspend,
+			      sprd_clk_resume, NULL);
 
 MODULE_DESCRIPTION("Spreadtrum clock infrastructure");
 MODULE_LICENSE("GPL v2");
