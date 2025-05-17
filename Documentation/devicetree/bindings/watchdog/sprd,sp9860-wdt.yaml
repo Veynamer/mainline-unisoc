@@ -16,7 +16,12 @@ allOf:
 
 properties:
   compatible:
-    const: sprd,sp9860-wdt
+    oneOf:
+      - items:
+          - enum:
+              - sprd,ums9230-wdt
+          - const: sprd,sp9860-wdt
+      - const: sprd,sp9860-wdt
 
   reg:
     maxItems: 1
