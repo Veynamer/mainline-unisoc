@@ -1967,9 +1967,9 @@ static int ov8856_init_controls(struct ov8856 *ov8856, struct device *dev)
 	return 0;
 }
 
-static void ov8856_update_pad_format(struct ov8856 *ov8856,
-				     const struct ov8856_mode *mode,
-				     struct v4l2_mbus_framefmt *fmt)
+static void ov8856_update_pad_format(const struct ov8856_mode *mode,
+				     struct v4l2_mbus_framefmt *fmt,
+				     u32 *mbus_index)
 {
 	int index;
 
@@ -1981,8 +1981,10 @@ static void ov8856_update_pad_format(struct ov8856 *ov8856,
 	if (index == ARRAY_SIZE(ov8856_mbus_codes))
 		index = mode->default_mbus_index;
 	fmt->code = ov8856_mbus_codes[index];
-	ov8856->cur_mbus_index = index;
 	fmt->field = V4L2_FIELD_NONE;
+
+	if (mbus_index)
+		*mbus_index = index;
 }
 
 static int ov8856_start_streaming(struct ov8856 *ov8856)
@@ -2140,10 +2142,11 @@ static int ov8856_set_format(struct v4l2_subdev *sd,
 				      fmt->format.height);
 
 	mutex_lock(&ov8856->mutex);
-	ov8856_update_pad_format(ov8856, mode, &fmt->format);
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+		ov8856_update_pad_format(mode, &fmt->format, NULL);
 		*v4l2_subdev_state_get_format(sd_state, fmt->pad) = fmt->format;
 	} else {
+		ov8856_update_pad_format(mode, &fmt->format, &ov8856->cur_mbus_index);
 		ov8856->cur_mode = mode;
 		__v4l2_ctrl_s_ctrl(ov8856->link_freq, mode->link_freq_index);
 		__v4l2_ctrl_s_ctrl_int64(ov8856->pixel_rate,
@@ -2179,11 +2182,15 @@ static int ov8856_get_format(struct v4l2_subdev *sd,
 	struct ov8856 *ov8856 = to_ov8856(sd);
 
 	mutex_lock(&ov8856->mutex);
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
+	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
 		fmt->format = *v4l2_subdev_state_get_format(sd_state,
 							    fmt->pad);
-	else
-		ov8856_update_pad_format(ov8856, ov8856->cur_mode, &fmt->format);
+	} else {
+		fmt->format.width = ov8856->cur_mode->width;
+		fmt->format.height = ov8856->cur_mode->height;
+		fmt->format.code = ov8856_mbus_codes[ov8856->cur_mbus_index];
+		fmt->format.field = V4L2_FIELD_NONE;
+	}
 
 	mutex_unlock(&ov8856->mutex);
 
@@ -2231,8 +2238,9 @@ static int ov8856_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	struct ov8856 *ov8856 = to_ov8856(sd);
 
 	mutex_lock(&ov8856->mutex);
-	ov8856_update_pad_format(ov8856, &ov8856->priv_lane->supported_modes[0],
-				 v4l2_subdev_state_get_format(fh->state, 0));
+	ov8856_update_pad_format(&ov8856->priv_lane->supported_modes[0],
+				 v4l2_subdev_state_get_format(fh->state, 0),
+				 NULL);
 	mutex_unlock(&ov8856->mutex);
 
 	return 0;
