@@ -13,7 +13,12 @@ maintainers:
 
 properties:
   compatible:
-    const: sprd,sc9860-spi
+    oneOf:
+      - items:
+          - enum:
+              - sprd,ums9230-spi
+          - const: sprd,sc9860-spi
+      - const: sprd,sc9860-spi
 
   reg:
     maxItems: 1
