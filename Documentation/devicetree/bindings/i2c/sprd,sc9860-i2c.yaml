@@ -16,7 +16,12 @@ allOf:
 
 properties:
   compatible:
-    const: sprd,sc9860-i2c
+    oneOf:
+      - items:
+          - enum:
+              - sprd,ums9230-i2c
+          - const: sprd,sc9860-i2c
+      - const: sprd,sc9860-i2c
 
   reg:
     maxItems: 1
