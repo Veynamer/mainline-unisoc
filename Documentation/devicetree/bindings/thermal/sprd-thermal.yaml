@@ -15,7 +15,12 @@ $ref: thermal-sensor.yaml#
 
 properties:
   compatible:
-    const: sprd,ums512-thermal
+    oneOf:
+      - items:
+          - enum:
+              - sprd,ums9230-thermal
+          - const: sprd,ums512-thermal
+      - const: sprd,ums512-thermal
 
   reg:
     maxItems: 1
