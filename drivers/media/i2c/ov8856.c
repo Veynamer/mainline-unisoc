@@ -1885,11 +1885,16 @@ static const struct v4l2_ctrl_ops ov8856_ctrl_ops = {
 	.s_ctrl = ov8856_set_ctrl,
 };
 
-static int ov8856_init_controls(struct ov8856 *ov8856)
+static int ov8856_init_controls(struct ov8856 *ov8856, struct device *dev)
 {
+	struct v4l2_fwnode_device_properties props;
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	s64 exposure_max, h_blank;
 	int ret;
+
+	ret = v4l2_fwnode_device_parse(dev, &props);
+	if (ret < 0)
+		return ret;
 
 	ctrl_hdlr = &ov8856->ctrl_handler;
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 8);
@@ -1951,6 +1956,9 @@ static int ov8856_init_controls(struct ov8856 *ov8856)
 			  V4L2_CID_HFLIP, 0, 1, 1, 0);
 	v4l2_ctrl_new_std(ctrl_hdlr, &ov8856_ctrl_ops,
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
+
+	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &ov8856_ctrl_ops, &props);
+
 	if (ctrl_hdlr->error)
 		return ctrl_hdlr->error;
 
@@ -2405,7 +2413,7 @@ static int ov8856_probe(struct i2c_client *client)
 	mutex_init(&ov8856->mutex);
 	ov8856->cur_mode = &ov8856->priv_lane->supported_modes[0];
 	ov8856->cur_mbus_index = ov8856->cur_mode->default_mbus_index;
-	ret = ov8856_init_controls(ov8856);
+	ret = ov8856_init_controls(ov8856, &client->dev);
 	if (ret) {
 		dev_err(&client->dev, "failed to init controls: %d", ret);
 		goto probe_error_v4l2_ctrl_handler_free;
