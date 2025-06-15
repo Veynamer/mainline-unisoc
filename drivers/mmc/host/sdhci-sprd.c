@@ -11,6 +11,7 @@
 #include <linux/iopoll.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
+#include <linux/mmc/slot-gpio.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/pinctrl/consumer.h>
@@ -427,15 +428,14 @@ static void sdhci_sprd_set_power(struct sdhci_host *host, unsigned char mode,
 
 	switch (mode) {
 	case MMC_POWER_OFF:
-		mmc_regulator_set_ocr(host->mmc, mmc->supply.vmmc, 0);
-
 		mmc_regulator_disable_vqmmc(mmc);
-		break;
-	case MMC_POWER_ON:
-		mmc_regulator_enable_vqmmc(mmc);
+		mmc_regulator_set_ocr(host->mmc, mmc->supply.vmmc, 0);
 		break;
 	case MMC_POWER_UP:
+	case MMC_POWER_ON:
 		mmc_regulator_set_ocr(host->mmc, mmc->supply.vmmc, vdd);
+		usleep_range(200, 250);
+		mmc_regulator_enable_vqmmc(mmc);
 		break;
 	}
 }
