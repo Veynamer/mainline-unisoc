@@ -403,8 +403,7 @@ static int sc27xx_fgu_get_vol_now(struct sc27xx_fgu_data *data, int *val)
 
 static int sc27xx_fgu_get_cur_now(struct sc27xx_fgu_data *data, int *val)
 {
-	int ret;
-	u32 cur;
+	int ret, cur;
 
 	ret = regmap_read(data->regmap, data->base + SC27XX_FGU_CURRENT_BUF,
 			  &cur);
