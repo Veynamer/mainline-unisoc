@@ -31,6 +31,13 @@ properties:
       Reference to a gate clock phandle, since access to some of IOMMUs are
       controlled by gate clock, but this is not required.
 
+  sprd,iova-range:
+    minItems: 2
+    maxItems: 2
+    description:
+      Start address and size of the virtual address region used by the master
+      device. Only needed if there are specific requirements.
+
 required:
   - compatible
   - reg
@@ -44,6 +51,7 @@ examples:
       compatible = "sprd,iommu-v1";
       reg = <0x63000800 0x80>;
       #iommu-cells = <0>;
+      sprd,iova-range = <0x90000000 0x10000000>;
     };
 
   - |
