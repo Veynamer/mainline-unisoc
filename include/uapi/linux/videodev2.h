@@ -877,6 +877,11 @@ struct v4l2_pix_format {
 #define V4L2_META_FMT_RPI_FE_CFG	v4l2_fourcc('R', 'P', 'F', 'C') /* PiSP FE configuration */
 #define V4L2_META_FMT_RPI_FE_STATS	v4l2_fourcc('R', 'P', 'F', 'S') /* PiSP FE stats */
 
+/* Vendor specific - used for Spreadtrum/Unisoc camera subsystem */
+#define V4L2_META_FMT_SPRD_DCAM_CFG	v4l2_fourcc('S', 'P', 'D', 'C') /* DCAM configuration */
+#define V4L2_META_FMT_SPRD_DCAM_STATS	v4l2_fourcc('S', 'P', 'D', 'S') /* DCAM statistics */
+#define V4L2_META_FMT_SPRD_ISP_CFG	v4l2_fourcc('S', 'P', 'I', 'C') /* ISP configuration */
+
 #ifdef __KERNEL__
 /*
  * Line-based metadata formats. Remember to update v4l_fill_fmtdesc() when
