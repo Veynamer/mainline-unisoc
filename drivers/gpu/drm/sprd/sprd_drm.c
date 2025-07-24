@@ -139,6 +139,16 @@ static int sprd_drm_bind(struct device *dev)
 		return ret;
 	}
 
+	/*
+	 * FIXME: sprd_gem_prime_import_sg_table() manages the IOMMU mapping,
+	 * so any additional DMA mapping in dma_buf_map_attachment() is
+	 * unnecessary when an IOMMU is in use. Since we cannot control this
+	 * here, set a fake DMA mask to avoid bouncing via swiotlb. This should
+	 * ideally match the address size supported by the IOMMU.
+	 */
+	if (sprd->iommu_domain)
+		dma_set_mask_and_coherent(drm->dev, DMA_BIT_MASK(44));
+
 	/* vblank init */
 	ret = drm_vblank_init(drm, drm->mode_config.num_crtc);
 	if (ret) {
