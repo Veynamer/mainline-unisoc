@@ -25,6 +25,7 @@
 
 #define DW9719_INFO			CCI_REG8(0)
 #define DW9719_ID			0xF1
+#define DW9800W_ID			0xF2
 #define DW9761_ID			0xF4
 
 #define DW9719_CONTROL			CCI_REG8(2)
@@ -101,6 +102,7 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
 
 		switch (val) {
 		case DW9719_ID:
+		case DW9800W_ID:
 			dw9719->model = DW9719;
 			dw9719->mode_low_bits = 0x00;
 			dw9719->sac_mode = DW9719_DEFAULT_SAC;
