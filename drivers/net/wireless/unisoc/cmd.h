@@ -19,9 +19,8 @@ int sc23xx_cmd_del_key(struct sc23xx_vif *vif, u8 key_index, bool pairwise,
 		       const u8 *mac_addr);
 int sc23xx_cmd_set_def_key(struct sc23xx_vif *vif, u8 key_index);
 int sc23xx_cmd_set_probe_req_ie(struct sc23xx_vif *vif, const u8 *ie, u16 ie_len);
-int sc23xx_cmd_scan(struct sc23xx_vif *vif, int n_ssids,
-		    struct cfg80211_ssid *ssids, u32 chn_2g_mask,
-		    int n_chn_5g, u16 *chns_5g);
+int sc23xx_cmd_scan(struct sc23xx_vif *vif,
+		    struct cfg80211_scan_request *request);
 int sc23xx_cmd_abort_scan(struct sc23xx_vif *vif);
 int sc23xx_cmd_sched_scan_start(struct sc23xx_vif *vif,
 				struct cfg80211_sched_scan_request *request);
@@ -33,6 +32,9 @@ int sc23xx_cmd_mgmt_tx(struct sc23xx_vif *vif, struct cfg80211_mgmt_tx_params *p
 int sc23xx_cmd_set_mac_addr(struct sc23xx_vif *vif, const u8 *mac_addr);
 int sc23xx_cmd_addba_rsp(struct sc23xx_dev *sdev, struct sc23xx_sta *sta,
 			 u8 tid);
+int sc23xx_cmd_set_regdom(struct sc23xx_dev *sdev, char *alpha2,
+			  const struct ieee80211_reg_rule **rules,
+			  unsigned int n_rules);
 int sc23xx_download_config_section(struct sc23xx_dev *sdev, u32 section,
 				   const void *data, u16 size);
 int sc23xx_get_fw_info(struct sc23xx_dev *sdev);

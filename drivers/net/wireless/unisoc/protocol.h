@@ -143,6 +143,7 @@ struct sc23xx_cmd_hdr {
 
 enum {
 	CMD_GET_INFO = 0x01,
+	CMD_SET_REGDOM = 0x02,
 	CMD_OPEN = 0x03,
 	CMD_CLOSE = 0x04,
 	CMD_POWER_SAVE = 0x05,
@@ -181,6 +182,16 @@ enum {
 	SUBCMD_DISABLE,
 	SUBCMD_REKEY,
 };
+
+struct sc23xx_reg_rule {
+	__le32 start_freq_khz;
+	__le32 end_freq_khz;
+	__le32 max_bandwidth_khz;
+	__le32 max_antenna_gain;
+	__le32 max_eirp;
+	__le32 flags;
+	__le32 dfs_cac_ms;
+} __packed;
 
 struct sc23xx_req_open {
 	u8 mode;

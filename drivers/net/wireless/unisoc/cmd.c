@@ -441,35 +441,49 @@ int sc23xx_cmd_set_probe_req_ie(struct sc23xx_vif *vif, const u8 *ie, u16 ie_len
 	return sc23xx_cmd_set_ie(vif, SC23XX_IE_PROBE_REQ, ie, ie_len);
 }
 
-int sc23xx_cmd_scan(struct sc23xx_vif *vif, int n_ssids,
-		    struct cfg80211_ssid *ssids, u32 chn_2g_mask,
-		    int n_chn_5g, u16 *chns_5g)
+int sc23xx_cmd_scan(struct sc23xx_vif *vif,
+		    struct cfg80211_scan_request *request)
 {
 	struct sc23xx_req_scan *req;
 	struct sk_buff *skb;
-	int i, ssids_len = 0;
+	unsigned int ssids_len = 0, n_chns_5g = 0, req_size;
+	u32 chn_2g_mask = 0;
+	u16 chns_5g[64];
+	int i;
 
-	for (i = 0; i < n_ssids; i++)
-		ssids_len += 1 + ssids[i].ssid_len;
+	for (i = 0; i < request->n_ssids; i++)
+		ssids_len += 1 + request->ssids[i].ssid_len;
 
-	skb = sc23xx_cmd_alloc_skb(CMD_SCAN, sizeof(*req) + ssids_len + 2 * (1 + n_chn_5g),
-				   vif->idx);
+	req_size = sizeof(*req) + ssids_len + 2 * (1 + n_chns_5g);
+
+	skb = sc23xx_cmd_alloc_skb(CMD_SCAN, req_size, vif->idx);
 	if (!skb)
 		return -ENOMEM;
 
 	req = skb_put(skb, sizeof(*req));
+
+	for (i = 0; i < request->n_channels; i++) {
+		u16 ch_idx = request->channels[i]->hw_value;
+
+		if (sc23xx_channel_is_2ghz(ch_idx))
+			chn_2g_mask |= BIT(ch_idx - 1);
+		else if (n_chns_5g < ARRAY_SIZE(chns_5g))
+			chns_5g[n_chns_5g++] = ch_idx;
+	}
+
 	req->channel_mask = cpu_to_le32(chn_2g_mask);
 	req->abort = cpu_to_le32(0);
 	req->ssids_len = cpu_to_le16(ssids_len);
 
-	for (i = 0; i < n_ssids; i++) {
-		struct cfg80211_ssid *ssid = &ssids[i];
+	for (i = 0; i < request->n_ssids; i++) {
+		struct cfg80211_ssid *ssid = &request->ssids[i];
+
 		skb_put_u8(skb, ssid->ssid_len);
 		skb_put_data(skb, ssid->ssid, ssid->ssid_len);
 	}
 
-	put_unaligned_le16(n_chn_5g, skb_put(skb, 2));
-	for (i = 0; i < n_chn_5g; i++)
+	put_unaligned_le16(n_chns_5g, skb_put(skb, 2));
+	for (i = 0; i < n_chns_5g; i++)
 		put_unaligned_le16(chns_5g[i], skb_put(skb, 2));
 
 	return sc23xx_send_cmd_wait(vif->sdev, skb, NULL, 0);
@@ -717,6 +731,45 @@ int sc23xx_cmd_addba_rsp(struct sc23xx_dev *sdev, struct sc23xx_sta *sta,
 	req->tid = tid;
 	memcpy(req->addr, sta->addr, ETH_ALEN);
 	req->success = 1;
+
+	return sc23xx_send_cmd_wait(sdev, skb, NULL, 0);
+}
+
+int sc23xx_cmd_set_regdom(struct sc23xx_dev *sdev, char *alpha2,
+			  const struct ieee80211_reg_rule **rules,
+			  unsigned int n_rules)
+{
+	struct sk_buff *skb;
+	size_t req_size;
+	int i;
+
+	req_size = sizeof(u32) + 2 + n_rules * sizeof(struct sc23xx_reg_rule);
+
+	skb = sc23xx_cmd_alloc_skb(CMD_SET_REGDOM, req_size, 0);
+	if (!skb)
+		return -ENOMEM;
+
+	*(__le32 *)skb_put(skb, 4) = cpu_to_le32(n_rules);
+
+	skb_put_data(skb, alpha2, 2);
+
+	for (i = 0; i < n_rules; i++) {
+		const struct ieee80211_freq_range *freq = &rules[i]->freq_range;
+		const struct ieee80211_power_rule *pwr = &rules[i]->power_rule;
+		struct sc23xx_reg_rule *r =
+			skb_put(skb, sizeof(struct sc23xx_reg_rule));
+
+		put_unaligned_le32(freq->start_freq_khz, &r->start_freq_khz);
+		put_unaligned_le32(freq->end_freq_khz, &r->end_freq_khz);
+		put_unaligned_le32(freq->max_bandwidth_khz,
+				   &r->max_bandwidth_khz);
+
+		put_unaligned_le32(pwr->max_antenna_gain, &r->max_antenna_gain);
+		put_unaligned_le32(pwr->max_eirp, &r->max_eirp);
+
+		put_unaligned_le32(rules[i]->flags, &r->flags);
+		put_unaligned_le32(rules[i]->dfs_cac_ms, &r->dfs_cac_ms);
+	}
 
 	return sc23xx_send_cmd_wait(sdev, skb, NULL, 0);
 }
@@ -1120,19 +1173,20 @@ static void sc23xx_handle_sta_lut_index(struct sc23xx_dev *sdev, struct sk_buff 
 
 	spin_lock_irq(&sdev->sta_lock);
 	sta = &sdev->sta[hdr->sta_lut_index - SC23XX_STA_IDX_MIN];
-	if (hdr->action == SC23XX_DEL_LUT_IDX) {
-		sta->valid = false;
-		sta->ht_enabled = false;
-		sta->addba_retries = 3;
-	} else {
+	if (hdr->action == SC23XX_ADD_LUT_IDX ||
+	    hdr->action == SC23XX_UPD_LUT_IDX) {
 		sta->valid = true;
 		sta->ht_enabled = hdr->ht_enabled;
+		sta->addba_retries = 3;
 		sta->ctx_id = hdr->ctx_id;
 		memcpy(sta->addr, hdr->addr, ETH_ALEN);
+	} else {
+		sta->valid = false;
+		sta->ht_enabled = false;
 	}
 	spin_unlock_irq(&sdev->sta_lock);
 
-	if (sta->ht_enabled && sta->addba_retries)
+	if (sta->ht_enabled)
 		queue_delayed_work(sdev->evt_wq, &sta->tx_ba_setup, 0);
 	else
 		cancel_delayed_work(&sta->tx_ba_setup);

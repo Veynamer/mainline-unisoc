@@ -148,9 +148,7 @@ static int sc23xx_resume(struct wiphy *wiphy)
 static int sc23xx_scan(struct wiphy *wiphy, struct cfg80211_scan_request *request)
 {
 	struct sc23xx_vif *vif = netdev_priv(request->wdev->netdev);
-	int ret, i, n_chn_5g = 0;
-	u32 chn_2g_mask = 0;
-	u16 chns_5g[64];
+	int ret;
 
 	mutex_lock(&vif->scan_lock);
 	if (vif->scan_req) {
@@ -158,25 +156,17 @@ static int sc23xx_scan(struct wiphy *wiphy, struct cfg80211_scan_request *reques
 		goto err_out;
 	}
 
+	vif->scan_req = request;
+	mutex_unlock(&vif->scan_lock);
+
 	if (request->ie_len > 0) {
-		ret = sc23xx_cmd_set_probe_req_ie(vif, request->ie, request->ie_len);
+		ret = sc23xx_cmd_set_probe_req_ie(vif, request->ie,
+						  request->ie_len);
 		if (ret)
 			goto err_out;
 	}
 
-	for (i = 0; i < request->n_channels; i++) {
-		u16 ch_idx = request->channels[i]->hw_value;
-		if (sc23xx_channel_is_2ghz(ch_idx))
-			chn_2g_mask |= BIT(ch_idx - 1);
-		else if (n_chn_5g < ARRAY_SIZE(chns_5g))
-			chns_5g[n_chn_5g++] = ch_idx;
-	}
-
-	vif->scan_req = request;
-	mutex_unlock(&vif->scan_lock);
-
-	ret = sc23xx_cmd_scan(vif, request->n_ssids, request->ssids,
-			      chn_2g_mask, n_chn_5g, chns_5g);
+	ret = sc23xx_cmd_scan(vif, request);
 	if (ret) {
 		sc23xx_notify_scan_done(vif, true);
 		return ret;
@@ -351,6 +341,42 @@ static const struct cfg80211_ops sc23xx_ops = {
 	.set_rekey_data = sc23xx_set_rekey_data,
 };
 
+static void sc23xx_reg_notify(struct wiphy *wiphy,
+			      struct regulatory_request *request)
+{
+	struct sc23xx_dev *sdev = wiphy_priv(wiphy);
+	const struct ieee80211_reg_rule *reg_rules[39];
+	unsigned int n_reg_rules = 0;
+	enum nl80211_band band;
+	int i;
+
+	wiphy_dbg(wiphy, "Updating regulatory domain: %c%c\n",
+		  request->alpha2[0], request->alpha2[1]);
+
+	for (band = 0; band < NUM_NL80211_BANDS &&
+		       n_reg_rules < ARRAY_SIZE(reg_rules); band++) {
+		if (!wiphy->bands[band])
+			continue;
+
+		for (i = 0; i < wiphy->bands[band]->n_channels &&
+			    n_reg_rules < ARRAY_SIZE(reg_rules); i++) {
+			const struct ieee80211_reg_rule *reg_rule;
+			struct ieee80211_channel *ch;
+
+			ch = &wiphy->bands[band]->channels[i];
+
+			reg_rule = freq_reg_info(wiphy,
+						 MHZ_TO_KHZ(ch->center_freq));
+			if (IS_ERR(reg_rule))
+				continue;
+
+			reg_rules[n_reg_rules++] = reg_rule;
+		}
+	}
+
+	sc23xx_cmd_set_regdom(sdev, request->alpha2, reg_rules, n_reg_rules);
+}
+
 void *sc23xx_alloc_device(struct device *dev, size_t size,
 			  const struct sc23xx_bus_ops *bus_ops)
 {
@@ -414,6 +440,7 @@ void *sc23xx_alloc_device(struct device *dev, size_t size,
 #ifdef CONFIG_PM
 	wiphy->wowlan = &sc23xx_wowlan_support;
 #endif
+	wiphy->reg_notifier = sc23xx_reg_notify;
 
 	sdev->band_2ghz.channels = sc23xx_2ghz_channels;
 	sdev->band_2ghz.n_channels = ARRAY_SIZE(sc23xx_2ghz_channels);
