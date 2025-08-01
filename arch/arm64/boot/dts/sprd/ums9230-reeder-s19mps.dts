@@ -54,6 +54,14 @@
 			no-map;
 		};
 
+		ramoops@fff80000 {
+			compatible = "ramoops";
+			reg = <0x0 0xfff80000 0x0 0x40000>;
+			console-size = <0x8000>;
+			record-size = <0x8000>;
+			pmsg-size = <0x8000>;
+		};
+
 		linux,cma {
 			compatible = "shared-dma-pool";
 			size = <0x0 0x8000000>;
