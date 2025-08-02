@@ -38,7 +38,7 @@
 		framebuffer_region: framebuffer-region@9e000000 {
 			compatible = "framebuffer";
 			reg = <0 0x9e000000 0 0x009e4000>;
-			iommu-addresses = <&disp 0 0x9e000000 0 0x009e4000>;
+			iommu-addresses = <&dpu 0x9e000000 0x009e4000>;
 			no-map;
 		};
 
@@ -121,11 +121,11 @@
 	status = "okay";
 };
 
-&dpu {
+&disp {
 	status = "okay";
 };
 
-&disp {
+&dpu {
 	status = "okay";
 	memory-region = <&framebuffer_region>;
 };
@@ -152,6 +152,12 @@
 
 &dsi_out {
 	remote-endpoint = <&panel_in>;
+};
+
+&hsphy {
+	status = "okay";
+
+	phy-supply = <&vddusb33>;
 };
 
 &aon_i2c0 {
@@ -264,6 +270,19 @@
 
 &uart1 {
 	status = "okay";
+};
+
+&usb {
+	status = "okay";
+	dr_mode = "otg";
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+
+	port {
+		usb_hs_ep: endpoint {
+			remote-endpoint = <&tcpc_hs_ep>;
+		};
+	};
 };
 
 /* PINCTRL */
