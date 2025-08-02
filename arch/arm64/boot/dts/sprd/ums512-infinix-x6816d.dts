@@ -1,0 +1,326 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2025 Vladimir Panferov
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/usb/pd.h>
+#include "ums512.dtsi"
+#include "sc2730.dtsi"
+
+/ {
+	model = "Infinix HOT 12 Play NFC";
+	compatible = "Infinix,x6816d", "sprd,ums512";
+	chassis-type = "handset";
+
+	chosen {
+		stdout-path = "serial1:115200n8";
+		bootargs = "earlycon";
+		framebuffer {
+			compatible = "simple-framebuffer";
+			memory-region = <&framebuffer_region>;
+			width = <720>;
+			height = <1640>;
+			stride = <(720 * 4)>;
+			format = "a8r8g8b8";
+
+			status = "disabled";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		framebuffer_region: framebuffer-region@9e000000 {
+			compatible = "framebuffer";
+			reg = <0 0x9e000000 0 0x009e4000>;
+			iommu-addresses = <&disp 0 0x9e000000 0 0x009e4000>;
+			no-map;
+		};
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			size = <0x0 0x8000000>;
+			reusable;
+			linux,cma-default;
+		};
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 2 40000>;
+		max-brightness = <4095>;
+		default-brightness-level = <2650>;
+	};
+
+	bat: battery {
+		compatible = "simple-battery";
+                device-chemistry = "lithium-ion";
+		charge-full-design-microamp-hours = <5960000>;
+		charge-term-current-microamp = <180000>;
+		constant-charge-voltage-max-microvolt = <4400000>;
+		constant-charge-current-max-microamp = <2000000>;
+		voltage-min-design-microvolt = <3450000>;
+		voltage-max-design-microvolt = <4340000>;
+		factory-internal-resistance-micro-ohms = <130000>;
+		resistance-temp-table = <45 77>, <25 100>, <10 546>,
+					<0 769>, <(-10) 892>, <(-20) 923>;
+		ocv-capacity-celsius = <20>;
+		ocv-capacity-table-0 = <4342104 100>, <4323024 95>,
+				       <4265840 90>, <4191992 85>,
+				       <4142032 80>, <4082680 75>,
+				       <4040480 70>, <3986216 65>,
+				       <3941512 60>, <3890168 55>,
+				       <3853000 50>, <3825648 45>,
+				       <3805040 40>, <3787760 35>,
+				       <3775920 30>, <3767088 25>,
+				       <3750960 20>, <3725168 15>,
+				       <3693000 10>, <3675000 5>,
+				       <3400000 0>;
+        };
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		autorepeat;
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_124>;
+		key-power {
+			wakeup-source;
+			debounce-interval = <2>;
+			gpios = <&pmic_eic 1 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+		};
+
+		key-volumeup {
+			wakeup-source;
+			debounce-interval = <2>;
+			gpios = <&ap_gpio 124 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+		};
+
+		key-volumedown {
+			wakeup-source;
+			debounce-interval = <2>;
+			gpios = <&pmic_eic 4 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_VOLUMEDOWN>;
+		};
+	};
+};
+
+&sc2730_fgu {
+	status = "okay";
+	monitored-battery = <&bat>;
+	sprd,calib-resistance-micro-ohms = <10000>;
+};
+
+&iommu_disp {
+	status = "okay";
+};
+
+&dpu {
+	status = "okay";
+};
+
+&disp {
+	status = "okay";
+	memory-region = <&framebuffer_region>;
+};
+
+&dsi {
+	status = "okay";
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	panel@0 {
+		compatible = "omnivision,td4160-tianma-720x1640-panel";
+		reg = <0>;
+		reset-gpios = <&ap_gpio 50 GPIO_ACTIVE_LOW>;
+		backlight = <&backlight>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+};
+
+&dsi_out {
+	remote-endpoint = <&panel_in>;
+};
+
+&aon_i2c0 {
+	status = "okay";
+	clock-frequency = <1000000>;
+};
+
+&i2c0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* camera sensor */
+	/* sub sensor */
+};
+
+&i2c1 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* camera sensor */
+};
+
+&i2c2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* ak4377 @ 10 */
+};
+
+&i2c3 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pn557: nfc@28 {
+		compatible = "nxp,pn553",
+			     "nxp,nxp-nci-i2c";
+		reg = <0x28>;
+
+		interrupt-parent = <&ap_gpio>;
+		interrupts = <126 IRQ_TYPE_LEVEL_HIGH>;
+
+		enable-gpios = <&ap_gpio 96 GPIO_ACTIVE_HIGH>;
+		firmware-gpios = <&ap_gpio 116 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&i2c4 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	/* sprd,flash-ocp81375 reg = <0x63>
+	   st,stmvl53l0 @ 52
+	   ams,tcs3430 @ 39
+	   bias ocp2131 @ 3e
+	*/
+};
+
+/* SD card */
+&sdio0 {
+	status = "okay";
+	vmmc-supply = <&vddsdcore>;
+	vqmmc-supply = <&vddsdio>;
+	cd-gpios = <&eic_sync 19 GPIO_ACTIVE_HIGH>;
+	bus-width = <4>;
+	no-sdio;
+	no-mmc;
+	sprd,phy-delay-sd-uhs-sdr104 = <0x7f 0x73 0x72 0x72>;
+	sprd,phy-delay-sd-uhs-sdr50 = <0x6e 0x7f 0x01 0x01>;
+	sprd,phy-delay-sd-highspeed = <0x7f 0x1a 0x9a 0x9a>;
+	sprd,phy-delay-legacy = <0x7f 0x1a 0x9a 0x9a>;
+	sd-uhs-sdr104;
+	sd-uhs-sdr50;
+};
+
+/* EMMC storage */
+&sdio3 {
+	status = "okay";
+	vmmc-supply = <&vddemmccore>;
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	no-sdio;
+	no-sd;
+        non-removable;
+	sprd,phy-delay-mmc-hs400es = <0x40 0x7f 0x2d 0x2d>;
+	sprd,phy-delay-mmc-hs400 = <0x3f 0xdf 0x2f 0x2f>;
+	sprd,phy-delay-mmc-hs200 = <0x7f 0xde 0xd4 0xd4>;
+	sprd,phy-delay-mmc-ddr52 = <0x3e 0x37 0x24 0x24>;
+	cap-mmc-hw-reset;
+	mmc-hs400-enhanced-strobe;
+	mmc-hs400-1_8v;
+	mmc-hs200-1_8v;
+	mmc-ddr-1_8v;
+};
+
+&vddemmccore {
+	regulator-always-on;
+};
+
+&vddldo0 {
+	regulator-always-on;
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+/* PINCTRL */
+&pinctrl {
+	gpio_121: keyout0 {
+		pins = "UMS512_KEYOUT0";
+		function = "func4";
+	};
+
+	gpio_122: keyout1 {
+		pins = "UMS512_KEYOUT1";
+		function = "func4";
+	};
+
+	gpio_123: keyout2 {
+		pins = "UMS512_KEYOUT2";
+		function = "func4";
+	};
+
+	gpio_124: keyin0 {
+		pins = "UMS512_KEYIN0";
+		function = "func4";
+	};
+
+	gpio_125: keyin1 {
+		pins = "UMS512_KEYIN1";
+		function = "func4";
+	};
+
+	gpio_126: keyin2 {
+		pins = "UMS512_KEYIN2";
+		function = "func4";
+	};
+
+	gpio_144: extint0 {
+		pins = "UMS512_EXTINT0";
+		function = "func4";
+	};
+
+	gpio_145: extint1 {
+		pins = "UMS512_EXTINT1";
+		function = "func4";
+	};
+
+	gpio_147: scl3 {
+		pins = "UMS512_SCL3";
+		function = "func4";
+	};
+
+	gpio_146: sda3 {
+		pins = "UMS512_SDA3";
+		function = "func4";
+	};
+
+	gpio_16: rffe1_sda {
+		pins = "UMS512_RFFE1_SDA";
+		function = "func4";
+	};
+};
+
