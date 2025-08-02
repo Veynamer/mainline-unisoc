@@ -6,7 +6,6 @@
  * Author: linhua xu <linhua.xu@unisoc.com>
  */
 
-#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
@@ -848,20 +847,19 @@ static struct sprd_pins_info sprd_ums512_pins_info[] = {
 	SPRD_PINCTRL_PIN(UMS512_SCL3_MISC),
 };
 
-static const struct sprd_pinctrl_priv_data ums512_data = {
-	.common_offset = PINCTRL_REG_OFFSET,
-	.misc_offset = PINCTRL_REG_MISC_OFFSET,
-};
-
 static int sprd_pinctrl_probe(struct platform_device *pdev)
 {
 	return sprd_pinctrl_core_probe(pdev, sprd_ums512_pins_info,
-				       ARRAY_SIZE(sprd_ums512_pins_info));
+				       ARRAY_SIZE(sprd_ums512_pins_info),
+				       PINCTRL_REG_OFFSET,
+				       PINCTRL_REG_MISC_OFFSET);
 }
 
 static const struct of_device_id sprd_pinctrl_of_match[] = {
-	{ .compatible = "sprd,ums512-pinctrl", .data = &ums512_data},
-	{ }
+	{
+		.compatible = "sprd,ums512-pinctrl",
+	},
+	{ },
 };
 MODULE_DEVICE_TABLE(of, sprd_pinctrl_of_match);
 
@@ -874,6 +872,7 @@ static struct platform_driver sprd_pinctrl_driver = {
 	.remove = sprd_pinctrl_remove,
 	.shutdown = sprd_pinctrl_shutdown,
 };
+
 module_platform_driver(sprd_pinctrl_driver);
 
 MODULE_DESCRIPTION("UNISOC Pin Controller Driver");
