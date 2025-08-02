@@ -216,6 +216,21 @@ static int sprd_hsphy_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct sprd_hsphy_data ums512_data = {
+	/* AON APB regs */
+	.otg_test_reg		= 0x0204,
+	.otg_ctrl_reg		= 0x0208,
+
+	/* analog g2 regs */
+	.pll_reg		= 0x0070,
+	.pd_reg			= 0x005c,
+	.utmi_ctl1_reg		= 0x0058,
+	.utmi_ctl2_reg		= 0x0064,
+	.trimming_reg		= 0x0060,
+	.reg_sel_cfg_reg	= 0x0074,
+	.reg_sel_mask		= BIT(2) | BIT(1),
+};
+
 static const struct sprd_hsphy_data ums9230_data = {
 	/* AON APB regs */
 	.otg_test_reg		= 0x0204,
@@ -232,6 +247,7 @@ static const struct sprd_hsphy_data ums9230_data = {
 };
 
 static const struct of_device_id sprd_hsphy_of_match[] = {
+	{ .compatible = "sprd,ums512-hsphy", .data = &ums512_data },
 	{ .compatible = "sprd,ums9230-hsphy", .data = &ums9230_data },
 	{ }
 };
