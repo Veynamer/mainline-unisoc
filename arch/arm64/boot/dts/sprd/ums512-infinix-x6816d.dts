@@ -219,6 +219,10 @@
 	*/
 };
 
+&sc2730_codec {
+	status = "okay";
+};
+
 /* SD card */
 &sdio0 {
 	status = "okay";
@@ -274,15 +278,15 @@
 
 &usb {
 	status = "okay";
-	dr_mode = "otg";
-	usb-role-switch;
-	role-switch-default-mode = "peripheral";
+	dr_mode = "peripheral";
+	//usb-role-switch;
+	//role-switch-default-mode = "peripheral";
 
-	port {
-		usb_hs_ep: endpoint {
-			remote-endpoint = <&tcpc_hs_ep>;
-		};
-	};
+	//port {
+	//	usb_hs_ep: endpoint {
+	//		remote-endpoint = <&tcpc_hs_ep>;
+	//	};
+	//};
 };
 
 /* PINCTRL */
