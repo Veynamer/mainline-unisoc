@@ -1277,11 +1277,12 @@
 
 			dpu: dpu@20300000 {
 				compatible = "sprd,ums512-dpu", "sprd,sharkl3-dpu";
-				reg = <0 0x20300000 0 0x1000>;
+				reg = <0 0x20300000 0 0x800>;
 				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&apahb_gate CLK_DISPC_EB>,
 				 <&ap_clk CLK_DISPC0_DPI>;
 				clock-names = "core", "dpi";
+				iommus = <&iommu_disp>;
 
 				status = "disabled";
 
@@ -1295,7 +1296,7 @@
 			iommu_disp: iommu@20300800 {
 				compatible = "sprd,ums512-iommu", "sprd,iommu-v1";
 				reg = <0 0x20300800 0 0x80>;
-				sprd,iova-base = <0x90000000>;
+				sprd,iova-range = <0x90000000 0x10000000>;
 				#iommu-cells = <0>;
 
 				status = "disabled";
