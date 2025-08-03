@@ -234,6 +234,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <544>;
 			dynamic-power-coefficient = <102>;
+			#cooling-cells = <2>;
 		};
 
 		CPU1: cpu@100 {
@@ -245,6 +246,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <544>;
 			dynamic-power-coefficient = <102>;
+			#cooling-cells = <2>;
 		};
 
 		CPU2: cpu@200 {
@@ -256,6 +258,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <544>;
 			dynamic-power-coefficient = <102>;
+			#cooling-cells = <2>;
 		};
 
 		CPU3: cpu@300 {
@@ -267,6 +270,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <544>;
 			dynamic-power-coefficient = <102>;
+			#cooling-cells = <2>;
 		};
 
 		CPU4: cpu@400 {
@@ -278,6 +282,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <544>;
 			dynamic-power-coefficient = <102>;
+			#cooling-cells = <2>;
 		};
 
 		CPU5: cpu@500 {
@@ -289,6 +294,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <544>;
 			dynamic-power-coefficient = <102>;
+			#cooling-cells = <2>;
 		};
 
 		CPU6: cpu@600 {
@@ -300,6 +306,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <501>;
+			#cooling-cells = <2>;
 		};
 
 		CPU7: cpu@700 {
@@ -311,6 +318,7 @@
 			clock-frequency = <1820000000>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <501>;
+			#cooling-cells = <2>;
 		};
 	};
 
