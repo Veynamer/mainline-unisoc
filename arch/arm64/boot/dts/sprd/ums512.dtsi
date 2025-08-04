@@ -1409,6 +1409,9 @@
 				compatible = "sprd,ums512-hw-i2c";
 				reg = <0 0x32060000 0 0x1000>;
 				interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&aonapb_gate CLK_I2C_EB>,
+					 <&aon_clk CLK_AON_I2C>,
+					 <&ext_26m>;
 				clock-names = "source", "enable", "i2c";
 				clock-frequency = <400000>;
 				#address-cells = <1>;
