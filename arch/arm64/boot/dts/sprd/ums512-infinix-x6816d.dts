@@ -17,7 +17,7 @@
 
 	chosen {
 		stdout-path = "serial1:115200n8";
-		bootargs = "earlycon";
+		bootargs = "earlycon root=/dev/ram0 rw init=/init keep_bootcon";
 		framebuffer {
 			compatible = "simple-framebuffer";
 			memory-region = <&framebuffer_region>;
