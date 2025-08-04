@@ -15,6 +15,7 @@
 #include <linux/pm_domain.h>
 #include <linux/regmap.h>
 
+#include "ums512-pm-domains.h"
 #include "ums9230-pm-domains.h"
 
 struct sprd_pmu_domain {
@@ -209,6 +210,10 @@ static const struct of_device_id sprd_pmu_of_match[] = {
 	{
 		.compatible = "sprd,ums9230-power-controller",
 		.data = &ums9230_pmu_data,
+	},
+	{
+		.compatible = "sprd,ums512-power-controller",
+		.data = &ums512_pmu_data,
 	},
 	{ }
 };
