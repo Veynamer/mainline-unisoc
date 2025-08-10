@@ -12,12 +12,13 @@
 
 / {
 	model = "Infinix HOT 12 Play NFC";
-	compatible = "Infinix,x6816d", "sprd,ums512";
+	/* HACK: use not sprd,ums512 to avoid dtbo fixup */
+	compatible = "Infinix,x6816d", "unisoc,ums512";
 	chassis-type = "handset";
 
 	chosen {
 		stdout-path = "serial1:115200n8";
-		bootargs = "earlycon root=/dev/ram0 rw init=/init keep_bootcon";
+		bootargs = "earlycon";
 		framebuffer {
 			compatible = "simple-framebuffer";
 			memory-region = <&framebuffer_region>;
