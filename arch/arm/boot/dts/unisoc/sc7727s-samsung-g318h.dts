@@ -30,9 +30,9 @@
 		stdout-path = "framebuffer";
 		bootargs = "earlycon init=/init root=/dev/ram0 rw";
 
-		fb0: framebuffer@9f89b000 {
+		fb0: framebuffer@9d700000 {
 			compatible = "simple-framebuffer";
-			reg = <0x9f89b000 (480 * 800 * 4)>;
+			reg = <0x9d700000 (480 * 800 * 4)>;
 			width = <480>;
 			height = <800>;
 			stride = <(480 * 4)>;
