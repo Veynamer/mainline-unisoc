@@ -22,6 +22,7 @@
 	chosen {
 		stdout-path = "serial0:115200n8";
 		bootargs = "earlycon init=/init root=/dev/ram0 rw";
+	};
 };
 
 &uart0 {
