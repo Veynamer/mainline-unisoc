@@ -148,7 +148,7 @@
 		compatible = "arm,cortex-a7-pmu";
 		interrupts =
 			<GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>,	/* CPU0 */
-			<GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,	/* CPU1 */
+			<GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;	/* CPU1 */
 	};
 
 	soc: soc {
