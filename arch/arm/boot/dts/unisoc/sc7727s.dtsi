@@ -1,0 +1,435 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Unisoc SC7727S SoC DTS file
+ *
+ * Copyright (c) 2025 Vladimir Panferov
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	compatible = "sprd,sc7727s";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	interrupt-parent = <&gic>;
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+	};
+
+	chosen { };
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		pstore_reserved: ramoops@9e524000 {
+			compatible = "ramoops";
+			reg = <0x9e524000 0x00040000>;
+			record-size = <0x8000>;
+			console-size = <0x8000>;
+			pmsg-size = <0x8000>;
+		};
+	};
+	
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&CPU0>;
+				};
+				core1 {
+					cpu = <&CPU1>;
+				};
+			};
+		};
+
+		CPU0: cpu@0 {
+			reg = <0x0>;
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			enable-method = "psci";
+			cpu-idle-states = <&LIGHT_SLEEP>;
+			operating-points-v2 = <&cpu_opp_table>;
+		};
+
+		CPU1: cpu@1 {
+			reg = <0x1>;
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			enable-method = "psci";
+			cpu-idle-states = <&LIGHT_SLEEP>;
+			operating-points-v2 = <&cpu_opp_table>;
+		};
+	};
+
+	idle-states {
+		LIGHT_SLEEP: light_sleep {
+			compatible = "arm,idle-state";
+			entry-latency-us = <20>;
+			exit-latency-us = <10>;
+			min-residency-us = <50>;
+			local-timer-stop;
+		};
+		HEAVY_SLEEP: heavy_sleep {
+			compatible = "arm,idle-state";
+			entry-latency-us = <400>;
+			exit-latency-us = <700>;
+			min-residency-us = <1200>;
+			local-timer-stop;
+		};
+	};
+
+	cpu_opp_table: cpu-opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp-768000000 {
+			opp-hz = /bits/ 64 <768000000>;
+			opp-microvolt = <900000>;
+		};
+
+		opp-900000000 {
+			opp-hz = /bits/ 64 <900000000>;
+			opp-microvolt = <900000>;
+		};
+
+		opp-1000000000 {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <931250>;
+		};
+
+		opp-1100000000 {
+			opp-hz = /bits/ 64 <1100000000>;
+			opp-microvolt = <962500>;
+		};
+
+		opp-1150000000 {
+			opp-hz = /bits/ 64 <1150000000>;
+			opp-microvolt = <975000>;
+		};
+
+		opp-1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-microvolt = <990625>;
+		};
+
+		opp-1300000000 {
+			opp-hz = /bits/ 64 <1300000000>;
+			opp-microvolt = <1021875>;
+		};
+	};
+
+
+	psci {
+		compatible = "arm,psci-1.0";
+		method = "smc";
+	};
+
+	timer {
+		compatible = "arm,armv7-timer";
+		interrupts = <GIC_PPI 118 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Secure physical PPI */
+			     <GIC_PPI 28  (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Non-secure physical PPI*/
+			     <GIC_PPI 29  (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Virtual PPI */
+			     <GIC_PPI 119 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Hypervisor physical PPI */
+			     <GIC_PPI 121 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+		clock-frequency = <26000000>;
+		arm,no-tick-in-suspend;
+	};
+
+	pmu {
+		compatible = "arm,cortex-a7-pmu";
+		interrupts =
+			<GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>,	/* CPU0 */
+			<GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,	/* CPU1 */
+	};
+
+	soc: soc {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		gic: interrupt-controller@12001000 {
+			compatible = "arm,cortex-a15-gic";
+			#interrupt-cells = <3>;
+			interrupt-controller;
+			reg = <0x12001000 0x1000>,	/* GICD */
+			      <0x12002000 0x1000>;	/* GICR */
+		};
+
+		funnel_soc: funnel-soc@10001000 {
+			compatible = "arm,coresight-funnel", "arm,primecell";
+			reg = <0x10001000 0x1000>;
+			clocks = <&ext_26m>;
+			clock-names = "apb_pclk";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					funnel_soc_out_port: endpoint {
+						remote-endpoint = <&etb_in>;
+					};
+				};
+				port@1 {
+					reg = <0>;
+					funnel_soc_in_port: endpoint {
+						slave-mode;
+						remote-endpoint = <&funnel_core_out_port>;
+					};
+				};
+			};
+		};
+
+		etb: tmc-etb@10003000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x10003000 0x1000>;
+			clocks = <&ext_26m>;
+			clock-names = "apb_pclk";
+			port {
+				etb_in: endpoint {
+					slave-mode;
+					remote-endpoint = <&funnel_soc_out_port>;
+				};
+			};
+		};
+
+		ts: cs-ts@10009000 {
+			compatible = "arm,coresight-ts", "arm,primecell";
+			reg = <0x10009000 0x1000>;
+		};
+
+		funnel_core: funnel-core@10220000 {
+			compatible = "arm,coresight-funnel", "arm,primecell";
+			reg = <0x10220000 0x1000>;
+			clocks = <&ext_26m>;
+			clock-names = "apb_pclk";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				/* funnel output port */
+				port@0 {
+					reg = <0>;
+					funnel_core_out_port: endpoint {
+						remote-endpoint = <&funnel_soc_in_port>;
+					};
+				};
+				/* funnel input ports */
+				port@1 {
+					reg = <0>;
+					funnel_core_in_port0: endpoint {
+						slave-mode;
+						remote-endpoint = <&etm0_out>;
+					};
+				};
+				port@2 {
+					reg = <1>;
+					funnel_core_in_port1: endpoint {
+						slave-mode;
+						remote-endpoint = <&etm1_out>;
+					};
+				};
+			};
+		};
+
+		etm_core0: etm-core0@1025c000 {
+			compatible = "arm,coresight-etm3x", "arm,primecell";
+			reg = <0x1025c000 0x1000>;
+			cpu = <&cpu0>;
+			clocks = <&ext_26m>;
+			clock-names = "apb_pclk";
+			port {
+				etm0_out: endpoint {
+					remote-endpoint = <&funnel_core_in_port0>;
+				};
+			};
+		};
+
+		etm_core1: etm-core1@1025d000 {
+			compatible = "arm,coresight-etm3x", "arm,primecell";
+			reg = <0x1025d000 0x1000>;
+			cpu = <&cpu1>;
+			clocks = <&ext_26m>;
+			clock-names = "apb_pclk";
+			port {
+				etm1_out: endpoint {
+					remote-endpoint = <&funnel_core_in_port1>;
+				};
+			};
+		};
+
+		ap_ahb_regs: syscon@20e00000 {
+			compatible = "sprd,sc7727s-glbregs", "syscon",
+						 "simple-mfd";
+			reg = <0x20e00000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x20e00000 0x10000>;
+
+		};
+
+		pmu_apb_regs: syscon@402b0000 {
+			compatible = "sprd,sc7727s-glbregs", "syscon",
+				     "simple-mfd";
+			reg = <0x402b0000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x402b0000 0x10000>;
+		};
+
+		aon_apb_regs: syscon@402e0000 {
+			compatible = "sprd,sc7727s-glbregs", "syscon",
+				     "simple-mfd";
+			reg = <0x402e0000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x402e0000 0x10000>;
+		};
+
+		mm_ahb_regs: syscon@60d00000 {
+			compatible = "sprd,sc7727s-glbregs", "syscon",
+				     "simple-mfd";
+			reg = <0x60d00000 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x60d00000 0x4000>;
+		};
+
+		ap_apb_regs: syscon@71300000 {
+			compatible = "sprd,sc7727s-glbregs", "syscon",
+				     "simple-mfd";
+			reg = <0x71300000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x71300000 0x10000>;
+		};
+
+		ap-apb {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+			uart0: uart@f5360000 {
+				compatible = "sprd,sc7727s-uart", 
+					     "sprd,sc9836-uart";
+				reg = <0xf5360000 0x1000>;
+				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&ext_26m>;
+
+				status = "disabled";
+			};
+
+			uart1: uart@f5362000 {
+				compatible = "sprd,sc7727s-uart",
+					     "sprd,sc9836-uart";
+				reg = <0xf5362000 0x1000>;
+				interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&ext_26m>;
+
+				status = "disabled";
+			};
+
+			uart2: uart@f5364000 {
+				compatible = "sprd,sc7727s-uart",
+					     "sprd,sc9836-uart";
+				reg = <0xf5364000 0x1000>;
+				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&ext_26m>;
+
+				status = "disabled";
+			};
+
+			uart3: uart@f5366000 {
+				compatible = "sprd,sc7727s-uart",
+					     "sprd,sc9836-uart";
+				reg = <0xf5366000 0x1000>;
+				interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&ext_26m>;
+
+				status = "disabled";
+			};
+		};
+
+		ap-ahb {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+		};
+
+		aon {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+			adi_bus: spi@403c0000 {
+				compatible = "sprd,sc7727s-adi", "sprd,ums512-adi";
+				reg = <0x403c0000 0x10000>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				sprd,hw-channels = <3 0x8c68>, <33 0x8c20>,
+				<35 0x8cc0>, <36 0x8ccc>;
+			};
+		};
+
+		ext_26m: ext-26m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <26000000>;
+			clock-output-names = "ext_26m";
+		};
+
+		ext_32k: ext-32k {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-output-names = "ext_32k";
+		};
+
+		ext_26m_rf1: ext-26m-rf1 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <26000000>;
+			clock-output-names = "ext_26m_rf1";
+		};
+
+		ext_1m: ext-1m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <1000000>;
+			clock-output-names = "ext_1m";
+		};
+
+		ext_2m: ext-2m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <2000000>;
+			clock-output-names = "ext_2m";
+		};
+
+		ext_4m: ext-4m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <4000000>;
+			clock-output-names = "ext_4m";
+		};
+
+		clk_pad: clk-pad {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <64000000>;
+			clock-output-names = "clk_pad";
+		};
+	};
+};

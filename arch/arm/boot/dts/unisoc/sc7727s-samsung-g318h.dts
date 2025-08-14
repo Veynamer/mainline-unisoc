@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Spreadtrum sharkl sp7727s board DTS file
+ *
+ * Copyright (C) 2025, Vladimir Panferov
+ */
+
+/dts-v1/;
+
+#include <sc7727s.dtsi>
+#include <sc2723.dtsi>
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+/ {
+	model = "Samsung Galaxy Ace 4 Neo";
+	compatible = "samsung,sm-g318h", "sprd,sc7727s";
+
+	aliases {
+		framebuffer = &fb0;
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x80000000 0x20000000>;
+	};
+
+	chosen {
+		stdout-path = "framebuffer";
+		bootargs = "earlycon init=/init root=/dev/ram0 rw";
+
+		fb0: framebuffer@9f89b000 {
+			compatible = "simple-framebuffer";
+			reg = <0x9f89b000 (480 * 800 * 4)>;
+			width = <480>;
+			height = <800>;
+			stride = <(480 * 4)>;
+			format = "a8r8g8b8";
+			status = "okay";
+		};
+	};
+
+	simple-battery {
+		compatible = "simple-battery";
+		voltage-max-design-microvolt = <4350000>;
+		voltage-min-design-microvolt = <3300000>;
+		voltage-now-microvolt = <3800000>;
+		alarm-voltage-microvolt = <3500000>;
+		charge-full-design-microamp-hours = <1500000>;
+		energy-full-design-microwatt-hours = <5700000>;
+		internal-resistance-micro-ohms = <70000>;
+		technology = "Li-ion";
+
+		resistance-temp-table = <70 583>, <65 655>, <60 750>, <58 790>, <55 855>,
+					<50 960>, <46 1010>, <45 1090>, <40 1170>, <35 1315>,
+					<30 1435>, <25 1590>, <20 1700>, <15 1850>, <10 1965>,
+					<5 2095>, <2 2135>, <0 2170>, <(-2) 2202>, <(-5) 2250>,
+					<(-7) 2285>, <(-15) 2376>, <(-20) 2415>;
+
+		ocv-capacity-celsius = <20>;
+		ocv-capacity-table-0 = <4318 100>, <4247 95>,
+					<4185 90>, <4130 85>,
+					<4085 80>, <4042 75>,
+					<3998 70>, <3959 65>,
+					<3917 60>, <3865 55>,
+					<3833 50>, <3811 45>,
+					<3793 40>, <3779 35>,
+					<3770 30>, <3761 25>,
+					<3741 20>, <3705 15>,
+					<3667 10>, <3628 5>,
+					<3400 0>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&uart3 {
+	status = "okay";
+};

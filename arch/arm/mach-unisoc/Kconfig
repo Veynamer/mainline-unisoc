@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menuconfig ARCH_UNISOC
+	bool "Unisoc/Spreadtrum SoC Support"
+	depends on ARCH_MULTI_V7
+	select ARM_AMBA
+	select ARM_GIC
+	select VFPv3
+	select HAVE_ARM_ARCH_TIMER
+	select PINCTRL
+	select PINCTRL_SPRD
+	select PM_GENERIC_DOMAINS if PM
+	select SRAM
+	select THERMAL
+	select THERMAL_OF
+	select MFD_SYSCON
+	select MEMORY
+	select COMMON_CLK
+	select REGMAP
+	select IRQ_DOMAIN
+	select GENERIC_IRQ_CHIP
+	select POWER_RESET
+	select POWER_RESET_SYSCON
+	select POWER_RESET_SYSCON_POWEROFF
+	help
+	  Support for Unisoc/Spreadtrum ARMv7 SoCs.
