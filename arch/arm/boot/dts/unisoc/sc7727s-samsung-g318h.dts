@@ -7,8 +7,8 @@
 
 /dts-v1/;
 
-#include <sc7727s.dtsi>
-#include <sc2723.dtsi>
+#include "sc7727s.dtsi"
+#include "sc2723.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
