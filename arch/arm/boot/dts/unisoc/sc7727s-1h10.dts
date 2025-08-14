@@ -7,8 +7,8 @@
 
 /dts-v1/;
 
-#include <sc7727s.dtsi>
-#include <sc2723.dtsi>
+#include "sc7727s.dtsi"
+#include "sc2723.dtsi"
 
 / {
 	model = "Spreadtrum SP7727S 1h10 Board";
