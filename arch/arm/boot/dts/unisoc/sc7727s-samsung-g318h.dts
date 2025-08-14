@@ -73,6 +73,14 @@
 	};
 };
 
+&CPU0 {
+	cpu-supply = <&vddcore>;
+};
+
+&CPU1 {
+	cpu-supply = <&vddcore>;
+};
+
 &uart0 {
 	status = "okay";
 };
