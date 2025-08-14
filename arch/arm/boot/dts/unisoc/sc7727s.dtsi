@@ -243,7 +243,7 @@
 		etm_core0: etm-core0@1025c000 {
 			compatible = "arm,coresight-etm3x", "arm,primecell";
 			reg = <0x1025c000 0x1000>;
-			cpu = <&cpu0>;
+			cpu = <&CPU0>;
 			clocks = <&ext_26m>;
 			clock-names = "apb_pclk";
 			port {
@@ -256,7 +256,7 @@
 		etm_core1: etm-core1@1025d000 {
 			compatible = "arm,coresight-etm3x", "arm,primecell";
 			reg = <0x1025d000 0x1000>;
-			cpu = <&cpu1>;
+			cpu = <&CPU1>;
 			clocks = <&ext_26m>;
 			clock-names = "apb_pclk";
 			port {
