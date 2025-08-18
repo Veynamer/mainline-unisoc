@@ -5,12 +5,13 @@
  * Copyright (c) 2025 Vladimir Panferov
  */
 
+#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
 	compatible = "sprd,sc7727s";
-	#address-cells = <1>;
-	#size-cells = <1>;
+	#address-cells = <2>;
+	#size-cells = <2>;
 	interrupt-parent = <&gic>;
 
 	aliases {
@@ -23,19 +24,19 @@
 	chosen { };
 
 	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <2>;
+		#size-cells = <2>;
 		ranges;
 
 		pstore_reserved: ramoops@9e524000 {
 			compatible = "ramoops";
-			reg = <0x9e524000 0x00040000>;
+			reg = <0 0x9e524000 0 0x00040000>;
 			record-size = <0x8000>;
 			console-size = <0x8000>;
 			pmsg-size = <0x8000>;
 		};
 	};
-	
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -57,6 +58,8 @@
 			compatible = "arm,cortex-a7";
 			enable-method = "psci";
 			cpu-idle-states = <&LIGHT_SLEEP>;
+			cpu-supply = <&vddcore>;
+			dynamic-power-coefficient = <82>;
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 
@@ -66,23 +69,25 @@
 			compatible = "arm,cortex-a7";
 			enable-method = "psci";
 			cpu-idle-states = <&LIGHT_SLEEP>;
+			cpu-supply = <&vddcore>;
+			dynamic-power-coefficient = <82>;
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 	};
 
 	idle-states {
 		LIGHT_SLEEP: light_sleep {
-			compatible = "arm,idle-state";
-			entry-latency-us = <20>;
-			exit-latency-us = <10>;
-			min-residency-us = <50>;
+			compatible = "sprd,armv7-idle-state";
+			entry-latency-us = <50>;
+			exit-latency-us = <50>;
+			min-residency-us = <1000>;
 			local-timer-stop;
 		};
 		HEAVY_SLEEP: heavy_sleep {
-			compatible = "arm,idle-state";
-			entry-latency-us = <400>;
-			exit-latency-us = <700>;
-			min-residency-us = <1200>;
+			compatible = "sprd,armv7-idle-state";
+			entry-latency-us = <2000>;
+			exit-latency-us = <1070>;
+			min-residency-us = <2500>;
 			local-timer-stop;
 		};
 	};
@@ -127,19 +132,23 @@
 		};
 	};
 
-
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
 	};
 
-	timer {
+	gic: interrupt-controller@12001000 {
+		compatible = "arm,cortex-a7-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0 0x12001000 0 0x1000>,	/* GICD */
+		      <0 0x12002000 0 0x1000>;	/* GICR */
+	};
+
+	arch_timer: timer {
 		compatible = "arm,armv7-timer";
-		interrupts = <GIC_PPI 118 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Secure physical PPI */
-			     <GIC_PPI 28  (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Non-secure physical PPI*/
-			     <GIC_PPI 29  (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Virtual PPI */
-			     <GIC_PPI 119 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>, /* Hypervisor physical PPI */
-			     <GIC_PPI 121 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+		interrupts = <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>;
 		clock-frequency = <26000000>;
 		arm,no-tick-in-suspend;
 	};
@@ -153,86 +162,39 @@
 
 	soc: soc {
 		compatible = "simple-bus";
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <2>;
+		#size-cells = <2>;
 		ranges;
 
-		gic: interrupt-controller@12001000 {
-			compatible = "arm,cortex-a15-gic";
-			#interrupt-cells = <3>;
-			interrupt-controller;
-			reg = <0x12001000 0x1000>,	/* GICD */
-			      <0x12002000 0x1000>;	/* GICR */
-		};
-
-		funnel_soc: funnel-soc@10001000 {
+		funnel@10001000 {
 			compatible = "arm,coresight-funnel", "arm,primecell";
-			reg = <0x10001000 0x1000>;
+			reg = <0 0x10001000 0 0x1000>;
 			clocks = <&ext_26m>;
 			clock-names = "apb_pclk";
 			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
-				port@0 {
-					reg = <0>;
-					funnel_soc_out_port: endpoint {
-						remote-endpoint = <&etb_in>;
-					};
-				};
-				port@1 {
-					reg = <0>;
-					funnel_soc_in_port: endpoint {
-						slave-mode;
-						remote-endpoint = <&funnel_core_out_port>;
-					};
-				};
-			};
-		};
 
-		etb: tmc-etb@10003000 {
-			compatible = "arm,coresight-tmc", "arm,primecell";
-			reg = <0x10003000 0x1000>;
-			clocks = <&ext_26m>;
-			clock-names = "apb_pclk";
-			port {
-				etb_in: endpoint {
-					slave-mode;
-					remote-endpoint = <&funnel_soc_out_port>;
-				};
-			};
-		};
-
-		ts: cs-ts@10009000 {
-			compatible = "arm,coresight-ts", "arm,primecell";
-			reg = <0x10009000 0x1000>;
-		};
-
-		funnel_core: funnel-core@10220000 {
-			compatible = "arm,coresight-funnel", "arm,primecell";
-			reg = <0x10220000 0x1000>;
-			clocks = <&ext_26m>;
-			clock-names = "apb_pclk";
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
 				/* funnel output port */
 				port@0 {
 					reg = <0>;
-					funnel_core_out_port: endpoint {
-						remote-endpoint = <&funnel_soc_in_port>;
+					funnel_out_port0: endpoint {
+						remote-endpoint = <&etb_in>;
 					};
 				};
+
 				/* funnel input ports */
 				port@1 {
 					reg = <0>;
-					funnel_core_in_port0: endpoint {
+					funnel_in_port0: endpoint {
 						slave-mode;
 						remote-endpoint = <&etm0_out>;
 					};
 				};
+
 				port@2 {
 					reg = <1>;
-					funnel_core_in_port1: endpoint {
+					funnel_in_port1: endpoint {
 						slave-mode;
 						remote-endpoint = <&etm1_out>;
 					};
@@ -240,118 +202,117 @@
 			};
 		};
 
-		etm_core0: etm-core0@1025c000 {
+		etf: etf@10003000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0 0x10003000 0 0x1000>;
+			clocks = <&ext_26m>;
+			clock-names = "apb_pclk";
+			port {
+				etb_in: endpoint {
+					slave-mode;
+					remote-endpoint = <&funnel_out_port0>;
+				};
+			};
+		};
+
+		etm@1003c000 {
 			compatible = "arm,coresight-etm3x", "arm,primecell";
-			reg = <0x1025c000 0x1000>;
+			reg = <0 0x1003c000 0 0x1000>;
 			cpu = <&CPU0>;
 			clocks = <&ext_26m>;
 			clock-names = "apb_pclk";
 			port {
 				etm0_out: endpoint {
-					remote-endpoint = <&funnel_core_in_port0>;
+					remote-endpoint = <&funnel_in_port0>;
 				};
 			};
 		};
 
-		etm_core1: etm-core1@1025d000 {
+		etm@1003d000 {
 			compatible = "arm,coresight-etm3x", "arm,primecell";
-			reg = <0x1025d000 0x1000>;
+			reg = <0 0x1003d000 0 0x1000>;
 			cpu = <&CPU1>;
 			clocks = <&ext_26m>;
 			clock-names = "apb_pclk";
 			port {
 				etm1_out: endpoint {
-					remote-endpoint = <&funnel_core_in_port1>;
+					remote-endpoint = <&funnel_in_port1>;
 				};
 			};
 		};
 
 		ap_ahb_regs: syscon@20e00000 {
-			compatible = "sprd,sc7727s-glbregs", "syscon",
-						 "simple-mfd";
-			reg = <0x20e00000 0x10000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x20e00000 0x10000>;
-
+			compatible = "sprd,sc7727s-glbregs", "syscon";
+			reg = <0 0x20e00000 0 0x10000>;
 		};
 
 		pmu_apb_regs: syscon@402b0000 {
-			compatible = "sprd,sc7727s-glbregs", "syscon",
-				     "simple-mfd";
-			reg = <0x402b0000 0x10000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x402b0000 0x10000>;
+			compatible = "sprd,sc7727s-glbregs", "syscon";
+			reg = <0 0x402b0000 0 0x10000>;
 		};
 
 		aon_apb_regs: syscon@402e0000 {
-			compatible = "sprd,sc7727s-glbregs", "syscon",
-				     "simple-mfd";
-			reg = <0x402e0000 0x10000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x402e0000 0x10000>;
+			compatible = "sprd,sc7727s-glbregs", "syscon";
+			reg = <0 0x402e0000 0 0x10000>;
 		};
 
 		mm_ahb_regs: syscon@60d00000 {
-			compatible = "sprd,sc7727s-glbregs", "syscon",
-				     "simple-mfd";
-			reg = <0x60d00000 0x4000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x60d00000 0x4000>;
+			compatible = "sprd,sc7727s-glbregs", "syscon";
+			reg = <0 0x60d00000 0 0x4000>;
 		};
 
 		ap_apb_regs: syscon@71300000 {
-			compatible = "sprd,sc7727s-glbregs", "syscon",
-				     "simple-mfd";
-			reg = <0x71300000 0x10000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x71300000 0x10000>;
+			compatible = "sprd,sc7727s-glbregs", "syscon";
+			reg = <0 0x71300000 0 0x10000>;
+		};
+
+		ap-ahb {
+			compatible = "simple-bus";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
 		};
 
 		ap-apb {
 			compatible = "simple-bus";
-			#address-cells = <1>;
-			#size-cells = <1>;
+			#address-cells = <2>;
+			#size-cells = <2>;
 			ranges;
 
-			uart0: uart@f5360000 {
-				compatible = "sprd,sc7727s-uart", 
-					     "sprd,sc9836-uart";
-				reg = <0xf5360000 0x1000>;
+			uart0: serial@70000000 {
+				compatible = "sprd,sc7727s-uart",
+				"sprd,sc9836-uart";
+				reg = <0 0x70000000 0 0x100>;
 				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&ext_26m>;
 
 				status = "disabled";
 			};
 
-			uart1: uart@f5362000 {
+			uart1: serial@70100000 {
 				compatible = "sprd,sc7727s-uart",
-					     "sprd,sc9836-uart";
-				reg = <0xf5362000 0x1000>;
+				"sprd,sc9836-uart";
+				reg = <0 0x70100000 0 0x100>;
 				interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&ext_26m>;
 
 				status = "disabled";
 			};
 
-			uart2: uart@f5364000 {
+			uart2: serial@70200000 {
 				compatible = "sprd,sc7727s-uart",
-					     "sprd,sc9836-uart";
-				reg = <0xf5364000 0x1000>;
+				"sprd,sc9836-uart";
+				reg = <0 0x70200000 0 0x100>;
 				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&ext_26m>;
 
 				status = "disabled";
 			};
 
-			uart3: uart@f5366000 {
+			uart3: serial@70300000 {
 				compatible = "sprd,sc7727s-uart",
-					     "sprd,sc9836-uart";
-				reg = <0xf5366000 0x1000>;
+				"sprd,sc9836-uart";
+				reg = <0 0x70300000 0 0x100>;
 				interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&ext_26m>;
 
@@ -359,27 +320,99 @@
 			};
 		};
 
-		ap-ahb {
-			compatible = "simple-bus";
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
-
-		};
-
 		aon {
 			compatible = "simple-bus";
-			#address-cells = <1>;
-			#size-cells = <1>;
+			#address-cells = <2>;
+			#size-cells = <2>;
 			ranges;
 
-			adi_bus: spi@403c0000 {
-				compatible = "sprd,sc7727s-adi", "sprd,ums512-adi";
-				reg = <0x403c0000 0x10000>;
+			adi_bus: spi@40030000 {
+				compatible = "sprd,sc7727s-adi", "sprd,sc9860-adi";
+				reg = <0 0x40030000 0 0x10000>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				sprd,hw-channels = <3 0x8c68>, <33 0x8c20>,
-				<35 0x8cc0>, <36 0x8ccc>;
+				sprd,hw-channels = <64 0x8040>, <128 0x8080>,
+				<256 0x8100>, <1152 0x8480>;
+			};
+
+			gp_timer: timer@40050000 {
+				compatible = "sprd,scx35-timer";
+				reg = <0 0x40050000 0 0x1000>;
+				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			eic_debounce: gpio@40210000 {
+				compatible = "sprd,sc9860-eic-debounce";
+				reg = <0 0x40210000 0 0x80>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			eic_latch: gpio@40210080 {
+				compatible = "sprd,sc9860-eic-latch";
+				reg = <0 0x40210080 0 0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			eic_async: gpio@402100a0 {
+				compatible = "sprd,sc9860-eic-async";
+				reg = <0 0x402100a0 0 0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			eic_sync: gpio@402100c0 {
+				compatible = "sprd,sc9860-eic-sync";
+				reg = <0 0x402100c0 0 0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			ap_timer0: timer@4022000 {
+				compatible = "sprd,scx35-timer";
+				reg = <0 0x40220000 0 0x1000>;
+				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			syscnt_timer: timer@40230000 {
+				compatible = "sprd,scx35-timer";
+				reg = <0 0x40230000 0 0x1000>;
+				interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			ap_gpio: gpio@40280000 {
+				compatible = "sprd,sc9860-gpio";
+				reg = <0 0x40280000 0 0x1000>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			ap_timer1: timer@40330000 {
+				compatible = "sprd,scx35-timer";
+				reg = <0 0x40330000 0 0x1000>;
+				interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			ap_timer2: timer@40340000 {
+				compatible = "sprd,scx35-timer";
+				reg = <0 0x40340000 0 0x1000>;
+				interrupts = <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>;
 			};
 		};
 

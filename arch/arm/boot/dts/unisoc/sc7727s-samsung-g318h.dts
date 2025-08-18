@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Spreadtrum sharkl sp7727s board DTS file
+ * Spreadtrum pike sp7727s board DTS file
  *
  * Copyright (C) 2025, Vladimir Panferov
  */
@@ -28,8 +28,9 @@
 
 	chosen {
 		stdout-path = "framebuffer";
-		bootargs = "earlycon init=/init root=/dev/ram0 rw";
+		bootargs = "earlycon=sprd_serial,0x70000000 init=/init root=/dev/ram0 rw";
 
+		/* display: lcd_id=ID55bc10 lcd_base=9d700000 */
 		fb0: framebuffer@9d700000 {
 			compatible = "simple-framebuffer";
 			reg = <0x9d700000 (480 * 800 * 4)>;
@@ -38,6 +39,21 @@
 			stride = <(480 * 4)>;
 			format = "a8r8g8b8";
 			status = "okay";
+		};
+	};
+
+	reserved-memory {
+		smem_reserved: sipc_mem@87800000 {
+			reg = <0 0x87800000 0 0x240000>;
+			no-map;
+		};
+		cp_reserved: cp_modem@88000000 {
+			reg = <0 0x88000000 0 0x1c00000>;
+			no-map;
+		};
+		ion_reserved: ion_mem@9fd00000 {
+			reg = <0 0x9fd00000 0 0x300000>;
+			no-map;
 		};
 	};
 
@@ -53,32 +69,60 @@
 		technology = "Li-ion";
 
 		resistance-temp-table = <70 583>, <65 655>, <60 750>, <58 790>, <55 855>,
-					<50 960>, <46 1010>, <45 1090>, <40 1170>, <35 1315>,
-					<30 1435>, <25 1590>, <20 1700>, <15 1850>, <10 1965>,
-					<5 2095>, <2 2135>, <0 2170>, <(-2) 2202>, <(-5) 2250>,
-					<(-7) 2285>, <(-15) 2376>, <(-20) 2415>;
+		<50 960>, <46 1010>, <45 1090>, <40 1170>, <35 1315>,
+		<30 1435>, <25 1590>, <20 1700>, <15 1850>, <10 1965>,
+		<5 2095>, <2 2135>, <0 2170>, <(-2) 2202>, <(-5) 2250>,
+		<(-7) 2285>, <(-15) 2376>, <(-20) 2415>;
 
 		ocv-capacity-celsius = <20>;
 		ocv-capacity-table-0 = <4318 100>, <4247 95>,
-					<4185 90>, <4130 85>,
-					<4085 80>, <4042 75>,
-					<3998 70>, <3959 65>,
-					<3917 60>, <3865 55>,
-					<3833 50>, <3811 45>,
-					<3793 40>, <3779 35>,
-					<3770 30>, <3761 25>,
-					<3741 20>, <3705 15>,
-					<3667 10>, <3628 5>,
-					<3400 0>;
+		<4185 90>, <4130 85>,
+		<4085 80>, <4042 75>,
+		<3998 70>, <3959 65>,
+		<3917 60>, <3865 55>,
+		<3833 50>, <3811 45>,
+		<3793 40>, <3779 35>,
+		<3770 30>, <3761 25>,
+		<3741 20>, <3705 15>,
+		<3667 10>, <3628 5>,
+		<3400 0>;
 	};
-};
 
-&CPU0 {
-	cpu-supply = <&vddcore>;
-};
+	gpio-keys {
+		compatible = "gpio-keys";
 
-&CPU1 {
-	cpu-supply = <&vddcore>;
+		key-volumedown {
+			label = "Volume Down Key";
+			linux,code = <KEY_VOLUMEDOWN>;
+			gpios = <&eic_debounce 2 GPIO_ACTIVE_LOW>;
+			debounce-interval = <2>;
+			wakeup-source;
+		};
+
+		key-volumeup {
+			label = "Volume Up Key";
+			linux,code = <KEY_VOLUMEUP>;
+			gpios = <&pmic_eic 10 GPIO_ACTIVE_HIGH>;
+			debounce-interval = <2>;
+			wakeup-source;
+		};
+
+		key-power {
+			label = "Power Key";
+			linux,code =<KEY_POWER>;
+			gpios = <&pmic_eic 1 GPIO_ACTIVE_LOW>;
+			debounce-interval = <2>;
+			wakeup-source;
+		};
+
+		key-home {
+			label = "Home Key";
+			linux,code = <KEY_HOMEPAGE>;
+			gpios = <&ap_gpio 113 GPIO_ACTIVE_HIGH>;
+			debounce-interval = <2>;
+			wakeup-source;
+		};
+	};
 };
 
 &uart0 {
