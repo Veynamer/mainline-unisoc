@@ -29,11 +29,20 @@
 	chosen {
 		stdout-path = "framebuffer";
 		bootargs = "earlycon=sprd_serial,0x70000000 init=/init root=/dev/ram0 rw";
+		/* Default S-BOOT bootloader loads initramfs here */
+		linux,initrd-start = <0x85500000>;
+		linux,initrd-end   = <0x855a3212>;
+
+		/*
+		* Stock bootloader provides incorrect memory size in ATAG_MEM;
+		* override it here
+		*/
+		linux,usable-memory-range = <0x80000000 0x20000000>;
 
 		/* display: lcd_id=ID55bc10 lcd_base=9d700000 */
 		fb0: framebuffer@9d700000 {
 			compatible = "simple-framebuffer";
-			reg = <0x9d700000 (480 * 800 * 4)>;
+			reg = <0 0x9d700000 0 (480 * 800 * 4)>;
 			width = <480>;
 			height = <800>;
 			stride = <(480 * 4)>;
@@ -53,6 +62,11 @@
 		};
 		ion_reserved: ion_mem@9fd00000 {
 			reg = <0 0x9fd00000 0 0x300000>;
+			no-map;
+		};
+
+		logobuffer: logo_mem@9d700000 {
+			reg = <0 0x9d700000 0 (480 * 800 * 4)>;
 			no-map;
 		};
 	};
