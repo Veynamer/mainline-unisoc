@@ -12,8 +12,7 @@
 
 / {
 	model = "Infinix HOT 12 Play NFC";
-	/* HACK: use not sprd,ums512 to avoid dtbo fixup */
-	compatible = "Infinix,x6816d", "unisoc,ums512";
+	compatible = "Infinix,x6816d", "sprd,ums512";
 	chassis-type = "handset";
 
 	chosen {
